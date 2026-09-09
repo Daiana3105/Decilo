@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+
+<html lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>DECILO - Acceso a la Plataforma</title><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:ital,wght@0,400;0,600;0,700;1,400&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24..48,400..700,0..1,-50..200&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@100..900&display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {"darkMode":"class","theme":{"extend":{"colors":{"background":"#f8f9ff","on-primary-fixed":"#001e2d","error-container":"#ffdad6","tertiary-fixed-dim":"#88d6af","surface-variant":"#dee2ec","on-tertiary-fixed-variant":"#005236","on-background":"#171c23","outline":"#72787d","error":"#ba1a1a","secondary-container":"#ff8258","on-error-container":"#93000a","surface-tint":"#3c637a","surface-container-highest":"#dee2ec","on-surface":"#171c23","secondary-fixed":"#ffdbd0","on-primary":"#ffffff","outline-variant":"#c1c7cd","on-tertiary-container":"#66b38d","tertiary":"#002b1a","inverse-surface":"#2c3138","surface-container-lowest":"#ffffff","on-secondary":"#ffffff","on-error":"#ffffff","on-primary-container":"#82a9c3","inverse-on-surface":"#edf1fb","surface-bright":"#f8f9ff","primary":"#00283a","secondary-fixed-dim":"#ffb59d","on-primary-fixed-variant":"#234b61","on-secondary-fixed-variant":"#832702","on-secondary-fixed":"#390b00","on-tertiary":"#ffffff","inverse-primary":"#a5cce7","surface-dim":"#d6dae4","secondary":"#a33d19","primary-fixed":"#c6e7ff","tertiary-fixed":"#a4f3ca","primary-fixed-dim":"#a5cce7","surface-container":"#eaeef8","surface":"#f8f9ff","on-surface-variant":"#42474c","on-secondary-container":"#701f00","on-tertiary-fixed":"#002113","surface-container-high":"#e4e8f2","tertiary-container":"#00432c","primary-container":"#133e54","surface-container-low":"#f0f4fd"},"borderRadius":{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},"spacing":{"margin-desktop":"2rem","margin-tablet":"1.5rem","touch-card":"5.5rem","gap-sm":"0.5rem","margin-mobile":"1rem","touch-generous":"3.5rem","gap-xl":"2rem","touch-min":"3rem","gap-lg":"1.5rem","gap-md":"1rem","gap-xs":"0.25rem"},"fontFamily":{"headline-md":["Atkinson Hyperlegible Next"],"display-lg":["Atkinson Hyperlegible Next"],"pictogram-label-sm":["Atkinson Hyperlegible Next"],"body-lg":["Atkinson Hyperlegible Next"],"body-md":["Atkinson Hyperlegible Next"],"pictogram-label":["Atkinson Hyperlegible Next"],"label-lg":["Atkinson Hyperlegible Next"],"display-lg-mobile":["Atkinson Hyperlegible Next"],"label-md":["Atkinson Hyperlegible Next"],"headline-lg":["Atkinson Hyperlegible Next"]},"fontSize":{"headline-md":["24px",{"lineHeight":"32px","fontWeight":"600"}],"display-lg":["40px",{"lineHeight":"48px","letterSpacing":"-0.01em","fontWeight":"700"}],"pictogram-label-sm":["18px",{"lineHeight":"22px","letterSpacing":"0.01em","fontWeight":"700"}],"body-lg":["18px",{"lineHeight":"28px","fontWeight":"400"}],"body-md":["16px",{"lineHeight":"24px","fontWeight":"400"}],"pictogram-label":["20px",{"lineHeight":"24px","letterSpacing":"0.01em","fontWeight":"700"}],"label-lg":["16px",{"lineHeight":"20px","letterSpacing":"0.02em","fontWeight":"600"}],"display-lg-mobile":["32px",{"lineHeight":"40px","letterSpacing":"-0.01em","fontWeight":"700"}],"label-md":["14px",{"lineHeight":"18px","letterSpacing":"0.02em","fontWeight":"600"}],"headline-lg":["28px",{"lineHeight":"36px","letterSpacing":"-0.005em","fontWeight":"700"}]}}}};</script></head><body class="bg-surface font-body-md text-on-surface min-h-screen flex flex-col justify-center items-center"><main class="w-full flex items-center justify-center p-4"><div class="flex flex-col w-full max-w-5xl mx-auto py-6 px-4 md:px-8">
+<!-- Accessibility Toolbar Floating/Pinned at Top -->
+<aside aria-label="Herramientas de accesibilidad y adaptación" class="w-full mb-6 bg-surface-container-lowest rounded-xl p-3 md:p-4 shadow-sm flex flex-wrap items-center justify-between gap-3 text-on-surface">
+<div class="flex items-center gap-2">
+<span aria-hidden="true" class="material-symbols-outlined text-primary">accessibility_new</span>
+<span class="font-label-md text-label-md text-primary font-bold">Opciones de Apoyo Accesible</span>
+</div>
+<div class="flex flex-wrap items-center gap-2">
+<button aria-pressed="false" class="flex items-center gap-1.5 px-3 py-2 bg-surface-container rounded-lg font-label-md text-label-md hover:bg-surface-variant transition-colors" id="btn-toggle-contrast" type="button">
+<span aria-hidden="true" class="material-symbols-outlined text-base">contrast</span>
+<span>Alto Contraste</span>
+</button>
+<button aria-pressed="false" class="flex items-center gap-1.5 px-3 py-2 bg-surface-container rounded-lg font-label-md text-label-md hover:bg-surface-variant transition-colors" id="btn-toggle-tts" type="button">
+<span aria-hidden="true" class="material-symbols-outlined text-base">volume_up</span>
+<span>Lector en Voz Alta</span>
+</button>
+<!-- Multi-signal Status Chip -->
+<div class="flex items-center gap-1.5 px-3 py-1.5 bg-tertiary-fixed text-on-tertiary-fixed rounded-full font-label-md text-label-md font-semibold">
+<span aria-hidden="true" class="material-symbols-outlined text-base">check_circle</span>
+<span>WCAG AAA Listo</span>
+</div>
+</div>
+</aside>
+<!-- Main Hero Card / Surface -->
+<section class="w-full bg-surface-container-lowest rounded-xl shadow-md p-6 sm:p-10 flex flex-col items-center">
+<!-- Header with Brand Logo & Slogan -->
+<header class="flex flex-col items-center text-center max-w-2xl mb-8">
+<img alt="DECILO Logo" class="h-14 md:h-16 w-auto object-contain mb-3" src="https://lh3.googleusercontent.com/aida/AEtjO1UY2nFO2BJ4gl_tKKrsmS86torcup4wUsuyS7IBm_taUZ6wW2WnHL0rIj1lgAXbO-LcWSz5PvJzSSsxXf8Y0BxKni-Wtw2IF2-Ds8xMIecpWYG-lGNdcGvDQArrtk0-V-jtscsd7VLc8-ief_UeQw-atWMSL5WunwJyqX3j8b4IZUJjUEq3XvFlZ3lUrfm-9N18BjJ3JDJcH6LOFugn2NK2Y5JkDJmwXk-vIKvDQa5cV5prQNYgD-iRKBc"/>
+<p class="font-headline-md text-headline-md text-primary-container tracking-tight">
+        Comunicación, práctica y acompañamiento
+      </p>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">
+        Plataforma adaptativa diseñada con respeto, autonomía y claridad clínica.
+      </p>
+</header>
+<!-- Role Selection Segment -->
+<div class="w-full mb-8">
+<div class="flex items-center justify-between mb-3">
+<h2 class="font-headline-md text-headline-md text-primary flex items-center gap-2">
+<span aria-hidden="true" class="material-symbols-outlined text-secondary">badge</span>
+<span>1. Selecciona tu perfil de acceso</span>
+</h2>
+<span class="font-label-md text-label-md text-on-surface-variant hidden sm:inline-block">Paso requerido</span>
+</div>
+<div aria-label="Selección de Perfil" class="grid grid-cols-1 md:grid-cols-3 gap-4" role="radiogroup">
+<!-- Role 1: Profesional -->
+<label class="group relative flex flex-col justify-between p-5 bg-surface-container-low rounded-xl cursor-pointer hover:bg-surface-container transition-all text-left shadow-sm" for="role-pro">
+<input checked="" class="sr-only" id="role-pro" name="user-role" type="radio" value="pro"/>
+<div>
+<div class="flex items-center justify-between mb-3">
+<span class="w-12 h-12 rounded-xl bg-primary-container text-on-primary flex items-center justify-center">
+<span aria-hidden="true" class="material-symbols-outlined text-2xl">clinical_notes</span>
+</span>
+<span aria-hidden="true" class="role-check-indicator material-symbols-outlined text-secondary opacity-100 font-bold">radio_button_checked</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-primary mb-1 group-hover:text-secondary transition-colors">
+              Profesional
+            </h3>
+<p class="font-label-md text-label-md text-secondary font-bold mb-2">
+              Fonoaudiología & Clínica
+            </p>
+<p class="font-body-md text-body-md text-on-surface-variant">
+              Gestión de pacientes, personalización de tableros, registros métricos y sesiones sincrónicas.
+            </p>
+</div>
+<div class="mt-4 pt-3 flex items-center gap-1.5 text-primary font-label-md text-label-md">
+<span aria-hidden="true" class="material-symbols-outlined text-base">arrow_forward</span>
+<span>Acceso avanzado</span>
+</div>
+</label>
+<!-- Role 2: Paciente / CAA -->
+<label class="group relative flex flex-col justify-between p-5 bg-surface-container-low rounded-xl cursor-pointer hover:bg-surface-container transition-all text-left shadow-sm" for="role-caa">
+<input class="sr-only" id="role-caa" name="user-role" type="radio" value="caa"/>
+<div>
+<div class="flex items-center justify-between mb-3">
+<span class="w-12 h-12 rounded-xl bg-secondary text-on-secondary flex items-center justify-center">
+<span aria-hidden="true" class="material-symbols-outlined text-2xl">record_voice_over</span>
+</span>
+<span aria-hidden="true" class="role-check-indicator material-symbols-outlined text-outline opacity-40 font-bold">radio_button_unchecked</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-primary mb-1 group-hover:text-secondary transition-colors">
+              Paciente / CAA
+            </h3>
+<p class="font-label-md text-label-md text-secondary font-bold mb-2">
+              Comunicador Visual & Práctica
+            </p>
+<p class="font-body-md text-body-md text-on-surface-variant">
+              Modo comunicador de alto contraste, botones de habla directa, pictogramas accesibles y actividades gamificadas.
+            </p>
+</div>
+<div class="mt-4 pt-3 flex items-center gap-1.5 text-secondary font-label-md text-label-md">
+<span aria-hidden="true" class="material-symbols-outlined text-base">touch_app</span>
+<span>Modo táctil amplio</span>
+</div>
+</label>
+<!-- Role 3: Familiar / Tutor -->
+<label class="group relative flex flex-col justify-between p-5 bg-surface-container-low rounded-xl cursor-pointer hover:bg-surface-container transition-all text-left shadow-sm" for="role-tutor">
+<input class="sr-only" id="role-tutor" name="user-role" type="radio" value="tutor"/>
+<div>
+<div class="flex items-center justify-between mb-3">
+<span class="w-12 h-12 rounded-xl bg-tertiary-container text-on-tertiary flex items-center justify-center">
+<span aria-hidden="true" class="material-symbols-outlined text-2xl">family_restroom</span>
+</span>
+<span aria-hidden="true" class="role-check-indicator material-symbols-outlined text-outline opacity-40 font-bold">radio_button_unchecked</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-primary mb-1 group-hover:text-secondary transition-colors">
+              Familiar / Tutor
+            </h3>
+<p class="font-label-md text-label-md text-secondary font-bold mb-2">
+              Acompañamiento en el Hogar
+            </p>
+<p class="font-body-md text-body-md text-on-surface-variant">
+              Seguimiento de rutinas diarias, comunicación fluida con el terapeuta y prácticas guiadas.
+            </p>
+</div>
+<div class="mt-4 pt-3 flex items-center gap-1.5 text-tertiary-container font-label-md text-label-md">
+<span aria-hidden="true" class="material-symbols-outlined text-base">forum</span>
+<span>Canal terapéutico</span>
+</div>
+</label>
+</div>
+</div>
+<!-- Login Form Area -->
+<div class="w-full max-w-xl bg-surface-container-low rounded-xl p-6 md:p-8 shadow-sm">
+<div class="flex items-center justify-between mb-6">
+<h2 class="font-headline-md text-headline-md text-primary flex items-center gap-2">
+<span aria-hidden="true" class="material-symbols-outlined text-primary-container">login</span>
+<span>2. Credenciales de Ingreso</span>
+</h2>
+<span class="px-2.5 py-1 bg-primary-container text-on-primary rounded-full font-label-md text-label-md" id="role-indicator-badge">
+          Profesional
+        </span>
+</div>
+<form class="flex flex-col gap-5" id="decilo-login-form" onsubmit="event.preventDefault(); triggerAuthMock();">
+<!-- Email or Username Field -->
+<div class="flex flex-col gap-1.5">
+<div class="flex items-center justify-between">
+<label class="font-label-lg text-label-lg text-primary font-bold" for="login-identifier">
+              Correo electrónico o Identificador de usuario
+            </label>
+<button class="text-secondary hover:text-on-secondary-container font-label-md text-label-md flex items-center gap-1" onclick="alert('Ingresa el correo con el que te registró tu fonoaudiólogo/a o el código único de comunicador.')" type="button">
+<span aria-hidden="true" class="material-symbols-outlined text-base">help</span>
+<span>¿Ayuda?</span>
+</button>
+</div>
+<div class="relative flex items-center">
+<span aria-hidden="true" class="absolute left-4 text-outline pointer-events-none material-symbols-outlined">person</span>
+<input class="w-full h-14 pl-12 pr-12 bg-surface-container-lowest text-on-surface rounded-xl font-body-lg text-body-lg focus:outline-none focus:ring-4 focus:ring-primary-container/20 transition-all placeholder:text-outline" id="login-identifier" name="identifier" placeholder="ej: maria.fono@clinica.com o COD-8842" required="" type="text"/>
+<button aria-label="Limpiar campo" class="absolute right-3 w-9 h-9 flex items-center justify-center rounded-lg text-outline hover:text-on-surface hover:bg-surface-variant" onclick="document.getElementById('login-identifier').value=''" type="button">
+<span aria-hidden="true" class="material-symbols-outlined text-xl">cancel</span>
+</button>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant">Puedes usar tu código numérico si eres usuario CAA</span>
+</div>
+<!-- Password / PIN Field -->
+<div class="flex flex-col gap-1.5">
+<div class="flex items-center justify-between">
+<label class="font-label-lg text-label-lg text-primary font-bold" for="login-password">
+              Contraseña o Clave numérica simple
+            </label>
+<span class="font-label-md text-label-md text-on-surface-variant">Mínimo 4 dígitos</span>
+</div>
+<div class="relative flex items-center">
+<span aria-hidden="true" class="absolute left-4 text-outline pointer-events-none material-symbols-outlined">lock</span>
+<input class="w-full h-14 pl-12 pr-14 bg-surface-container-lowest text-on-surface rounded-xl font-body-lg text-body-lg focus:outline-none focus:ring-4 focus:ring-primary-container/20 transition-all placeholder:text-outline" id="login-password" name="password" placeholder="Introduce tu clave secreta" required="" type="password"/>
+<button aria-label="Mostrar contraseña" class="absolute right-3 h-10 px-2 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors" id="btn-toggle-password" type="button">
+<span class="material-symbols-outlined" id="icon-pwd">visibility</span>
+</button>
+</div>
+</div>
+<!-- Submit Button (Primary Action, min 56px height) -->
+<button class="w-full h-14 mt-2 bg-secondary text-on-secondary hover:bg-on-secondary-container active:translate-y-0.5 rounded-xl font-headline-md text-headline-md flex items-center justify-center gap-3 shadow-md transition-all cursor-pointer" id="btn-submit-login" type="submit">
+<span aria-hidden="true" class="material-symbols-outlined text-2xl">arrow_forward</span>
+<span>Iniciar sesión en DECILO</span>
+</button>
+<!-- Recovery & Assistance Link -->
+<div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 text-center">
+<a class="text-secondary font-label-lg text-label-lg hover:underline flex items-center gap-1" href="#">
+<span aria-hidden="true" class="material-symbols-outlined text-base">support_agent</span>
+<span>¿Olvidaste tu clave? Solicitar ayuda a tu profesional</span>
+</a>
+<button class="text-on-surface-variant hover:text-primary font-label-md text-label-md flex items-center gap-1" onclick="alert('Se ha notificado al fonoaudiólogo asignado para la reactivación asistida.')" type="button">
+<span aria-hidden="true" class="material-symbols-outlined text-base">notifications_active</span>
+<span>Pedir código temporal</span>
+</button>
+</div>
+</form>
+</div>
+<!-- Device Preview & Guest Sandbox Section -->
+<div class="w-full mt-10 pt-8 bg-surface-container-lowest rounded-xl flex flex-col gap-6">
+<div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+<div>
+<h3 class="font-headline-md text-headline-md text-primary flex items-center gap-2">
+<span aria-hidden="true" class="material-symbols-outlined text-primary">devices</span>
+<span>Entorno y Modo Demostración</span>
+</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">
+            Prueba la interfaz y adapta las proporciones táctiles según el dispositivo del paciente.
+          </p>
+</div>
+<!-- Device Selector -->
+<div aria-label="Selector de tamaño de pantalla" class="flex items-center bg-surface-container p-1 rounded-xl" role="group">
+<button class="device-btn flex items-center gap-1.5 px-3 py-2 bg-surface-container-lowest text-primary rounded-lg font-label-md text-label-md shadow-sm" data-device="desktop" type="button">
+<span aria-hidden="true" class="material-symbols-outlined text-base">desktop_windows</span>
+<span>Computadora</span>
+</button>
+<button class="device-btn flex items-center gap-1.5 px-3 py-2 text-on-surface-variant hover:text-primary rounded-lg font-label-md text-label-md" data-device="tablet" type="button">
+<span aria-hidden="true" class="material-symbols-outlined text-base">tablet_mac</span>
+<span>Tablet</span>
+</button>
+<button class="device-btn flex items-center gap-1.5 px-3 py-2 text-on-surface-variant hover:text-primary rounded-lg font-label-md text-label-md" data-device="mobile" type="button">
+<span aria-hidden="true" class="material-symbols-outlined text-base">smartphone</span>
+<span>Celular</span>
+</button>
+</div>
+</div>
+<!-- Guest Demo Sandbox Buttons -->
+<div class="bg-surface-container-low rounded-xl p-5 flex flex-col md:flex-row items-center justify-between gap-4">
+<div class="flex items-center gap-3">
+<span class="w-10 h-10 rounded-full bg-secondary-fixed text-on-secondary-fixed flex items-center justify-center shrink-0">
+<span aria-hidden="true" class="material-symbols-outlined">smart_toy</span>
+</span>
+<div>
+<p class="font-label-lg text-label-lg text-primary font-bold">¿Deseas explorar sin credenciales?</p>
+<p class="font-body-md text-body-md text-on-surface-variant">Accede de inmediato con tableros modelo preconfigurados.</p>
+</div>
+</div>
+<div class="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+<button class="px-4 py-2.5 bg-primary-container text-on-primary hover:bg-primary font-label-md text-label-md rounded-lg flex items-center gap-1.5 transition-colors" onclick="guestAccess('Profesional')" type="button">
+<span aria-hidden="true" class="material-symbols-outlined text-base">medical_services</span>
+<span>Probar como Fonoaudiólogo</span>
+</button>
+<button class="px-4 py-2.5 bg-secondary text-on-secondary hover:bg-on-secondary-container font-label-md text-label-md rounded-lg flex items-center gap-1.5 transition-colors" onclick="guestAccess('Paciente CAA')" type="button">
+<span aria-hidden="true" class="material-symbols-outlined text-base">sentiment_very_satisfied</span>
+<span>Probar como Paciente CAA</span>
+</button>
+<button class="px-4 py-2.5 bg-surface-container text-primary hover:bg-surface-variant font-label-md text-label-md rounded-lg flex items-center gap-1.5 transition-colors" onclick="guestAccess('Familiar')" type="button">
+<span aria-hidden="true" class="material-symbols-outlined text-base">group</span>
+<span>Probar como Tutor</span>
+</button>
+</div>
+</div>
+<!-- Interactive Micro-Feedback Message Box (Hidden by default) -->
+<div class="hidden p-4 bg-tertiary-fixed text-on-tertiary-fixed rounded-xl flex items-center justify-between gap-3" id="demo-alert-banner">
+<div class="flex items-center gap-2">
+<span aria-hidden="true" class="material-symbols-outlined text-xl">info</span>
+<span class="font-body-md text-body-md font-semibold" id="demo-alert-text">Cargando modo interactivo...</span>
+</div>
+<button class="text-on-tertiary-fixed hover:opacity-75" onclick="document.getElementById('demo-alert-banner').classList.add('hidden')" type="button">
+<span aria-hidden="true" class="material-symbols-outlined text-base">close</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Reassuring Footer with Sensory & Clinical Badges -->
+<footer class="mt-8 flex flex-wrap items-center justify-between gap-4 text-on-surface-variant font-label-md text-label-md px-2">
+<div class="flex items-center gap-4 flex-wrap">
+<span class="flex items-center gap-1.5 text-primary">
+<span aria-hidden="true" class="material-symbols-outlined text-base text-secondary">security</span>
+<span>Protección de datos clínicos y privados</span>
+</span>
+<span class="flex items-center gap-1.5">
+<span aria-hidden="true" class="material-symbols-outlined text-base text-tertiary-container">hearing</span>
+<span>Síntesis de voz natural en español</span>
+</span>
+<span class="flex items-center gap-1.5">
+<span aria-hidden="true" class="material-symbols-outlined text-base text-primary">keyboard</span>
+<span>Navegación total por conmutador / switch</span>
+</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-secondary"></span>
+<span class="text-on-surface font-semibold">DECILO v4.2 Accesible</span>
+</div>
+</footer>
+</div>
+<script>
+  // Script for interactive feedback, high contrast simulation, and demo switching
+  (function() {
+    // Role selection updater
+    const roleInputs = document.querySelectorAll('input[name="user-role"]');
+    const roleBadge = document.getElementById('role-indicator-badge');
+    const loginIdentifier = document.getElementById('login-identifier');
+
+    const roleConfigs = {
+      pro: {
+        name: 'Profesional',
+        badgeClass: 'bg-primary-container text-on-primary',
+        placeholder: 'ej: maria.fono@clinica.com o Lic. 4402'
+      },
+      caa: {
+        name: 'Paciente CAA',
+        badgeClass: 'bg-secondary text-on-secondary',
+        placeholder: 'ej: Código visual o número (ej. 9021)'
+      },
+      tutor: {
+        name: 'Familiar / Tutor',
+        badgeClass: 'bg-tertiary-container text-on-tertiary',
+        placeholder: 'ej: tutor.carlos@correo.com'
+      }
+    };
+
+    roleInputs.forEach(input => {
+      input.addEventListener('change', (e) => {
+        // Update check icons visually
+        document.querySelectorAll('.role-check-indicator').forEach(icon => {
+          icon.textContent = 'radio_button_unchecked';
+          icon.classList.add('opacity-40');
+          icon.classList.remove('opacity-100');
+        });
+        const currentCard = e.target.closest('label');
+        const checkedIcon = currentCard.querySelector('.role-check-indicator');
+        if (checkedIcon) {
+          checkedIcon.textContent = 'radio_button_checked';
+          checkedIcon.classList.remove('opacity-40');
+          checkedIcon.classList.add('opacity-100');
+        }
+
+        const config = roleConfigs[e.target.value];
+        if (config && roleBadge) {
+          roleBadge.textContent = config.name;
+          roleBadge.className = `px-2.5 py-1 rounded-full font-label-md text-label-md ${config.badgeClass}`;
+          loginIdentifier.placeholder = config.placeholder;
+        }
+      });
+    });
+
+    // Password toggle
+    const togglePwd = document.getElementById('btn-toggle-password');
+    const pwdInput = document.getElementById('login-password');
+    const pwdIcon = document.getElementById('icon-pwd');
+
+    if (togglePwd && pwdInput && pwdIcon) {
+      togglePwd.addEventListener('click', () => {
+        const isPassword = pwdInput.type === 'password';
+        pwdInput.type = isPassword ? 'text' : 'password';
+        pwdIcon.textContent = isPassword ? 'visibility_off' : 'visibility';
+        togglePwd.setAttribute('aria-label', isPassword ? 'Ocultar contraseña' : 'Mostrar contraseña');
+      });
+    }
+
+    // High Contrast Mock Trigger
+    const btnContrast = document.getElementById('btn-toggle-contrast');
+    let highContrast = false;
+    if (btnContrast) {
+      btnContrast.addEventListener('click', () => {
+        highContrast = !highContrast;
+        btnContrast.setAttribute('aria-pressed', highContrast.toString());
+        if (highContrast) {
+          document.body.classList.add('contrast-125', 'brightness-95');
+          btnContrast.classList.add('bg-primary', 'text-on-primary');
+        } else {
+          document.body.classList.remove('contrast-125', 'brightness-95');
+          btnContrast.classList.remove('bg-primary', 'text-on-primary');
+        }
+      });
+    }
+
+    // Text to Speech Simulation
+    const btnTts = document.getElementById('btn-toggle-tts');
+    let ttsActive = false;
+    if (btnTts) {
+      btnTts.addEventListener('click', () => {
+        ttsActive = !ttsActive;
+        btnTts.setAttribute('aria-pressed', ttsActive.toString());
+        if (ttsActive) {
+          btnTts.classList.add('bg-secondary', 'text-on-secondary');
+          if ('speechSynthesis' in window) {
+            const utter = new SpeechSynthesisUtterance("Pantalla de inicio de sesión DECILO. Selecciona si eres profesional, paciente o tutor.");
+            utter.lang = 'es-ES';
+            window.speechSynthesis.speak(utter);
+          }
+        } else {
+          btnTts.classList.remove('bg-secondary', 'text-on-secondary');
+          if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+          }
+        }
+      });
+    }
+
+    // Device Preview Toggle
+    const deviceButtons = document.querySelectorAll('.device-btn');
+    deviceButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        deviceButtons.forEach(b => {
+          b.classList.remove('bg-surface-container-lowest', 'text-primary', 'shadow-sm');
+          b.classList.add('text-on-surface-variant');
+        });
+        btn.classList.add('bg-surface-container-lowest', 'text-primary', 'shadow-sm');
+        btn.classList.remove('text-on-surface-variant');
+
+        const device = btn.getAttribute('data-device');
+        const alertBanner = document.getElementById('demo-alert-banner');
+        const alertText = document.getElementById('demo-alert-text');
+        if (alertBanner && alertText) {
+          alertBanner.classList.remove('hidden');
+          alertText.textContent = `Modo adaptado para vista previa en ${device.toUpperCase()}. Escala de botones y cuadrículas recalculadas para ergonomía táctil.`;
+        }
+      });
+    });
+
+    // Global guest access helper
+    window.guestAccess = function(role) {
+      const banner = document.getElementById('demo-alert-banner');
+      const text = document.getElementById('demo-alert-text');
+      if (banner && text) {
+        banner.classList.remove('hidden');
+        text.textContent = `Iniciando espacio de prueba libre como "${role}". Sin recolección de datos clínicos.`;
+      }
+    };
+
+    window.triggerAuthMock = function() {
+      const banner = document.getElementById('demo-alert-banner');
+      const text = document.getElementById('demo-alert-text');
+      const role = document.getElementById('role-indicator-badge').textContent.trim();
+      if (banner && text) {
+        banner.classList.remove('hidden');
+        text.textContent = `Validando credenciales para perfil: ${role}... ¡Acceso concedido!`;
+      }
+    };
+  })();
+</script></main></body></html>
