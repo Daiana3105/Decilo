@@ -15,3 +15,16 @@ Las cuentas demo son `sofia@decilo.test`, `mateo@decilo.test` y `carla@decilo.te
 ## Despliegue
 
 Puede servirse con cualquier servidor estático. Por ejemplo, con Node instalado: `npx serve .` o un servidor HTTP equivalente. No se incorporan dependencias de audio, grabaciones, gráficos avanzados ni recomendaciones de IA.
+
+## Autenticacion y ejecucion local
+
+La autenticacion se resuelve mediante la API Node.js/Express de `server.js`. Las cuentas se guardan en SQLite en la tabla `users`; `password_hash` contiene un hash bcrypt y nunca se persiste una contraseña en texto plano. La API firma JWT usando `JWT_SECRET`, que debe existir solo en un archivo `.env` local o en el entorno del contenedor.
+
+Para levantar el proyecto con Docker:
+
+1. Copiar `.env.example` como `.env` y reemplazar `JWT_SECRET` por un valor aleatorio de al menos 32 caracteres.
+2. Ejecutar `docker compose up --build -d`.
+3. Abrir `http://localhost:8080` y consultar `http://localhost:8080/api/health`.
+4. Detener los servicios con `docker compose down`. El volumen `decilo-sqlite` conserva las cuentas; usar `docker compose down -v` solo cuando se quiera borrar la base de desarrollo.
+
+Las pruebas de API se ejecutan con `npm.cmd test` en Windows o `npm test` en un shell que permita el ejecutable de npm. El cambio no incluye recuperación de contraseña, OAuth, diagnósticos clínicos, inteligencia artificial, pagos, notificaciones externas ni despliegue productivo.
