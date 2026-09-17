@@ -6,9 +6,9 @@ Esta capacidad define el despliegue público de DECILO en Render con PostgreSQL 
 
 ### Requirement: Servicios públicos de Render
 
-El sistema MUST poder desplegar PostgreSQL como base administrada, la API Node/Express como Web Service y el frontend como Static Site. La configuración MUST usar los comandos derivados de la estructura real del proyecto y MUST permitir verificar las URLs públicas resultantes sin crear servicios durante la planificación.
+El sistema MUST poder desplegar PostgreSQL como base administrada, la API Node/Express como Web Service y el frontend como Static Site. Durante la planificación no se crearán servicios ni se configurarán secretos; durante la implementación se prepararán el código y la documentación, y después la persona usuaria creará y configurará manualmente los tres servicios en Render con los comandos derivados de la estructura real del proyecto.
 
-#### Scenario: API publicada como Web Service
+#### Scenario: Preparación de la API como Web Service
 - **WHEN** se configura el servicio API con el repositorio del proyecto y sus comandos documentados
 - **THEN** Render instala las dependencias del `package.json`, inicia `server.js` y expone la API en una URL HTTPS pública
 
@@ -19,6 +19,10 @@ El sistema MUST poder desplegar PostgreSQL como base administrada, la API Node/E
 #### Scenario: PostgreSQL administrado
 - **WHEN** la API se conecta a la base PostgreSQL administrada de Render
 - **THEN** usa la URL de conexión provista por Render y conserva las cuentas entre reinicios o nuevos despliegues del Web Service
+
+#### Scenario: Creación manual posterior
+- **WHEN** la implementación del cambio ya preparó código y documentación, y la persona usuaria crea manualmente PostgreSQL, el Web Service y el Static Site en Render
+- **THEN** puede configurar los servicios siguiendo el procedimiento documentado sin que la planificación haya creado recursos remotos
 
 ### Requirement: Configuración segura por entorno
 
@@ -32,9 +36,9 @@ El sistema MUST recibir `DATABASE_URL` y `JWT_SECRET` mediante variables de ento
 - **WHEN** una persona sigue la documentación de Render y del entorno local
 - **THEN** conoce los nombres de `DATABASE_URL`, `JWT_SECRET`, `PORT`, `API_PUBLIC_URL`, `FRONTEND_PUBLIC_URL` y las variables de prueba sin obtener valores secretos reales
 
-#### Scenario: Credenciales fuera de GitHub
-- **WHEN** se inspecciona el repositorio y el contenido que se enviará a GitHub
-- **THEN** `.env`, credenciales, tokens y URLs privadas quedan ignorados o ausentes, mientras `.env.example` contiene solo marcadores seguros
+#### Scenario: Credenciales fuera de todos los artefactos
+- **WHEN** se inspecciona el repositorio, GitHub, capturas y documentación del despliegue
+- **THEN** `.env`, credenciales, tokens, `DATABASE_URL` privada y secretos quedan ignorados o ausentes, mientras `.env.example` y las guías contienen solo marcadores seguros
 
 ### Requirement: Escucha, CORS y URL pública de API
 

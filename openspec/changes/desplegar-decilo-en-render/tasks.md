@@ -16,7 +16,10 @@
 - [ ] 3.1 Documentar la creación de PostgreSQL administrado en Render, el uso de su `DATABASE_URL`, la persistencia y la ausencia de eliminación de la base durante redeploys; verificar que la guía no contenga valores reales.
 - [ ] 3.2 Documentar el Web Service de la API con instalación `npm ci`, inicio `npm start`, raíz del repositorio y variables `DATABASE_URL`, `JWT_SECRET`, `PORT`, `FRONTEND_PUBLIC_URL` y `API_PUBLIC_URL`; verificar que los comandos coincidan con `package.json` y `server.js`.
 - [ ] 3.3 Documentar el Static Site con raíz/publicación de los archivos actuales, build reproducible y URL pública configurable de API; verificar que el publish directory contenga `index.html`, `app.js` y `styles.css`.
-- [ ] 3.4 Mantener fuera de esta etapa la creación de servicios, dominios, credenciales y despliegues en Render; verificar que el diff solo contenga planificación y documentación autorizada cuando se implemente el cambio.
+- [ ] 3.4 Crear manualmente en Render el PostgreSQL administrado después de implementar y revisar el código/documentación; verificar que la `DATABASE_URL` quede disponible únicamente como variable privada del panel y que no se escriba en archivos, Git, capturas ni documentación.
+- [ ] 3.5 Crear manualmente el Web Service de la API en Render usando la raíz del repositorio, `npm ci` y `npm start`; configurar `DATABASE_URL`, `JWT_SECRET`, `PORT`, `FRONTEND_PUBLIC_URL` y `API_PUBLIC_URL` desde el panel sin guardar sus valores en el repositorio; verificar que el servicio inicie y exponga su URL HTTPS.
+- [ ] 3.6 Crear manualmente el Static Site del frontend en Render usando el directorio publicado real y la configuración de `API_PUBLIC_URL`; verificar que sirva `index.html`, `app.js` y `styles.css` desde su URL HTTPS sin recibir secretos.
+- [ ] 3.7 Confirmar que la creación manual posterior de PostgreSQL, Web Service, Static Site y variables de Render se realice solo después de la implementación y revisión local; verificar que la planificación no haya creado recursos remotos ni almacenado credenciales en archivos, Git, capturas o documentación.
 
 ## 4. Pruebas locales antes del despliegue
 
@@ -31,4 +34,4 @@
 - [ ] 5.2 Probar registro y login de una cuenta de verificación desde el frontend público o HTTP contra la API, incluyendo los roles profesional, paciente y familiar; verificar respuestas públicas sin contraseña ni hash.
 - [ ] 5.3 Consultar `/api/auth/me` con el JWT de verificación y repetir login después de reiniciar o redeployar el Web Service; verificar identidad, rol y persistencia de la cuenta.
 - [ ] 5.4 Verificar CORS desde la URL pública del frontend y desde el origen local, rechazar un origen arbitrario y confirmar que la URL pública de API configurada sea la efectiva; registrar los resultados sin valores secretos.
-- [ ] 5.5 Completar el checklist final con URL pública del frontend, URL pública de API, healthcheck, registro, login, `/me`, CORS y persistencia; verificar que no queden referencias locales como única configuración pública y que Render no haya sido creado durante la planificación.
+- [ ] 5.5 Completar el checklist final después de la configuración manual con URL pública del frontend, URL pública de API, healthcheck, registro, login, `/me`, CORS y persistencia; verificar que no queden referencias locales como única configuración pública y que ningún secreto aparezca en archivos, Git, capturas o documentación.

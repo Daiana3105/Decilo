@@ -2,7 +2,7 @@
 
 La aplicación actual tiene una API Node/Express iniciada por `node server.js`, configuración centralizada en `config.js`, acceso PostgreSQL mediante `pg` en `db.js`, autenticación JWT en `auth.js` y un frontend estático compuesto por `index.html`, `app.js` y `styles.css`. El entorno local usa Docker Compose, PostgreSQL como servicio interno y Nginx con proxy `/api`; el frontend actual no debe perder ese recorrido. Ver `proposal.md` y las specs de este cambio para el contrato público.
 
-Render introduce tres límites operativos: PostgreSQL administrado entrega una `DATABASE_URL`, el Web Service asigna dinámicamente `PORT` y el Static Site tiene un origen distinto al de la API. La planificación no crea servicios, no publica secretos y no modifica código ni documentación existente.
+Render introduce tres límites operativos: PostgreSQL administrado entrega una `DATABASE_URL`, el Web Service asigna dinámicamente `PORT` y el Static Site tiene un origen distinto al de la API. Durante la planificación no se crean servicios ni se configuran secretos. Durante la implementación se preparan el código y la documentación; después, la persona usuaria crea y configura manualmente los servicios y variables en el panel de Render.
 
 ## Goals / Non-Goals
 
@@ -17,7 +17,8 @@ Render introduce tres límites operativos: PostgreSQL administrado entrega una `
 
 **Non-Goals:**
 
-- Crear servicios, bases, dominios o despliegues dentro de Render durante este cambio.
+- Crear servicios, bases, dominios o despliegues dentro de Render durante la fase de planificación.
+- Escribir valores secretos en archivos, Git, capturas o documentación; los valores reales se cargarán manualmente en el panel de Render después de la implementación.
 - Cambiar la apariencia, navegación de dominio, pictogramas, actividades o funcionalidades clínicas.
 - Migrar datos de usuarios existentes entre proveedores o diseñar alta disponibilidad, backups avanzados o escalado productivo.
 - Guardar credenciales, tokens, URLs privadas o valores reales en el repositorio.
@@ -54,7 +55,7 @@ La inicialización idempotente de `users` seguirá siendo responsabilidad de la 
 
 Antes de cualquier despliegue se ejecutarán `npm test`, `docker compose config`, `docker compose up --build -d`, healthchecks y un flujo local de registro/login/`/me` para los tres roles. Después, el checklist público usará placeholders para API y frontend: healthcheck, registro controlado, login, `/api/auth/me`, CORS, refresh/redeploy y persistencia.
 
-Como rollback, se conservarán los servicios administrados y se revertirá la versión del Web Service/Static Site a la última revisión conocida; no se borrará la base PostgreSQL. Si la URL pública cambia, se actualizará únicamente la variable de API permitida y el origen CORS correspondiente.
+La creación manual posterior seguirá este orden: PostgreSQL administrado, Web Service de la API, Static Site del frontend y variables de entorno/secretos en el panel de Render. Luego se verificarán las URLs públicas, healthcheck, registro, login, `/api/auth/me`, CORS y persistencia. Como rollback, se conservarán los servicios administrados y se revertirá la versión del Web Service/Static Site a la última revisión conocida; no se borrará la base PostgreSQL. Si la URL pública cambia, se actualizará únicamente la variable de API permitida y el origen CORS correspondiente.
 
 ## Risks / Trade-offs
 
@@ -72,8 +73,9 @@ Como rollback, se conservarán los servicios administrados y se revertirá la ve
 2. Implementar en el código la resolución de `DATABASE_URL`, `process.env.PORT`, CORS y URL de API del frontend sin cambiar contratos visuales.
 3. Actualizar la documentación de arquitectura, variables y configuración de Render con placeholders seguros.
 4. Ejecutar todas las pruebas locales y verificar el entorno Docker antes de cualquier servicio remoto.
-5. Crear manualmente, en la etapa de despliegue posterior, PostgreSQL, Web Service y Static Site en Render con las variables documentadas.
-6. Verificar las URLs públicas y la persistencia; si falla, revertir la revisión desplegada sin eliminar PostgreSQL.
+5. Crear manualmente, en la etapa posterior a la implementación, PostgreSQL administrado en Render y conservar su `DATABASE_URL` solo en el panel.
+6. Crear y configurar manualmente el Web Service de la API, el Static Site del frontend y sus variables de entorno/secretos, sin guardar valores en archivos, Git, capturas ni documentación.
+7. Verificar las URLs públicas y la persistencia; si falla, revertir la revisión desplegada sin eliminar PostgreSQL.
 
 ## Open Questions
 

@@ -1,6 +1,6 @@
 ## Why
 
-DECILO ya funciona localmente con Node/Express, PostgreSQL y un frontend estático, pero todavía no tiene un entorno público reproducible para que otras personas puedan probarlo fuera de la máquina de desarrollo. Esta etapa prepara el despliegue en Render con secretos y URLs configurables, manteniendo los flujos actuales de autenticación y dejando la creación de servicios para la ejecución posterior.
+DECILO ya funciona localmente con Node/Express, PostgreSQL y un frontend estático, pero todavía no tiene un entorno público reproducible para que otras personas puedan probarlo fuera de la máquina de desarrollo. Este cambio prepara el código y la documentación durante su implementación, y deja definido el procedimiento para que la persona usuaria cree y configure manualmente los servicios de Render después, sin exponer secretos durante la planificación.
 
 ## What Changes
 
@@ -8,10 +8,12 @@ DECILO ya funciona localmente con Node/Express, PostgreSQL y un frontend estáti
 - Publicar la API Node/Express como Web Service usando los comandos compatibles con el `package.json` real y `process.env.PORT`.
 - Publicar el frontend como Static Site con una URL pública de API configurable.
 - Definir CORS para el origen público del frontend y para el entorno local, sin abrirlo indiscriminadamente.
-- Mantener `JWT_SECRET`, `DATABASE_URL` y cualquier credencial únicamente en variables de entorno de Render o locales, nunca en GitHub.
+- Mantener `JWT_SECRET`, `DATABASE_URL` y cualquier credencial únicamente en variables de entorno de Render o locales, nunca en archivos, GitHub, capturas ni documentación.
 - Documentar variables, instalación, build, inicio, pruebas locales y verificación final de URLs públicas sin escribir valores secretos.
 - Verificar públicamente healthcheck, registro, login, `/api/auth/me` y persistencia PostgreSQL.
-- Mantener fuera de alcance cambios visuales, funcionalidades clínicas, migraciones de dominio adicionales y la creación efectiva de servicios en Render durante esta planificación.
+- Durante la planificación no crear servicios en Render ni configurar secretos; durante la implementación preparar el código y la documentación para el despliegue.
+- Después de la implementación, crear y configurar manualmente en Render PostgreSQL administrado, el Web Service de la API y el Static Site del frontend, junto con sus variables de entorno.
+- Mantener fuera de alcance cambios visuales, funcionalidades clínicas y migraciones de dominio adicionales.
 
 ## Capabilities
 
@@ -30,4 +32,4 @@ DECILO ya funciona localmente con Node/Express, PostgreSQL y un frontend estáti
 - Comandos de despliegue derivados de `package.json`, `Dockerfile.api` y la estructura actual del repositorio.
 - Documentación de arquitectura y operación, sin guardar URLs privadas, contraseñas, tokens ni otros secretos.
 - Pruebas locales y comprobaciones públicas de salud, autenticación, sesión y persistencia.
-- No se crearán servicios en Render, ni se hará commit, push o despliegue real como parte de esta planificación.
+- La planificación no crea servicios ni configura secretos en Render. La implementación preparará el repositorio y la documentación; la creación manual de PostgreSQL, Web Service, Static Site y variables del panel se realizará después, seguida de la verificación de URLs públicas. No se hará commit ni push como parte de esta planificación.
