@@ -1,21 +1,19 @@
-const fs = require("node:fs");
-const path = require("node:path");
-const Database = require("better-sqlite3");
+const { Pool } = require("pg");
 
-function createDatabase(dbPath) {
-  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
-  const database = new Database(dbPath);
-  database.pragma("journal_mode = WAL");
-  database.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      nombre TEXT NOT NULL,
-      email TEXT NOT NULL UNIQUE COLLATE NOCASE,
-      password_hash TEXT NOT NULL,
-      rol TEXT NOT NULL CHECK (rol IN ('profesional', 'paciente', 'familiar')),
-      fecha_creacion TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
+const CREATE_USERS_TABLE = `
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nombre TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    rol TEXT NOT NULL CHECK (rol IN ('profesional', 'paciente', 'familiar')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )
+`;
+
+async function createDatabase(databaseConfig) {
+  const database = new Pool(databaseConfig);
+  await database.query(CREATE_USERS_TABLE);
   return database;
 }
 
@@ -26,7 +24,7 @@ function publicUser(user) {
     nombre: user.nombre,
     email: user.email,
     rol: user.rol,
-    fechaCreacion: user.fecha_creacion
+    fechaCreacion: user.created_at
   };
 }
 

@@ -1,21 +1,39 @@
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const os = require("node:os");
-const path = require("node:path");
 const test = require("node:test");
 const request = require("supertest");
 const { createApp } = require("../server");
 const { createDatabase } = require("../db");
 
-function setup() {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "decilo-test-"));
-  const database = createDatabase(path.join(directory, "decilo.sqlite"));
-  const config = { jwtSecret: "test-secret-that-is-longer-than-32-characters", jwtExpiresIn: "1h" };
-  return { database, app: createApp({ config, database }) };
-}
+const databaseConfig = {
+  host: process.env.TEST_DB_HOST || process.env.DB_HOST || "127.0.0.1",
+  port: Number(process.env.TEST_DB_PORT || process.env.DB_PORT || 55432),
+  user: process.env.TEST_DB_USER || process.env.DB_USER || "decilo",
+  password: process.env.TEST_DB_PASSWORD || process.env.DB_PASSWORD || "decilo_dev_password",
+  database: process.env.TEST_DB_NAME || process.env.DB_NAME || "decilo",
+  max: 4
+};
+const config = {
+  jwtSecret: "test-secret-that-is-longer-than-32-characters",
+  jwtExpiresIn: "1h"
+};
+
+let database;
+let app;
+
+test.before(async () => {
+  database = await createDatabase(databaseConfig);
+  app = createApp({ config, database });
+});
+
+test.beforeEach(async () => {
+  await database.query("TRUNCATE TABLE users RESTART IDENTITY");
+});
+
+test.after(async () => {
+  await database.end();
+});
 
 test("registers a user with a hash and returns a JWT", async () => {
-  const { app, database } = setup();
   const response = await request(app).post("/api/auth/register").send({
     nombre: "Ana Demo",
     email: "ANA@example.com",
@@ -26,16 +44,15 @@ test("registers a user with a hash and returns a JWT", async () => {
 
   assert.equal(response.status, 201);
   assert.ok(response.body.token);
-  assert.deepEqual(response.body.user.rol, "paciente");
+  assert.equal(response.body.user.rol, "paciente");
   assert.equal(response.body.user.password_hash, undefined);
-  const stored = database.prepare("SELECT * FROM users WHERE email = ?").get("ana@example.com");
+  const stored = (await database.query("SELECT * FROM users WHERE email = $1", ["ana@example.com"])).rows[0];
   assert.ok(stored.password_hash);
+  assert.ok(stored.created_at);
   assert.equal(stored.password, undefined);
-  database.close();
 });
 
 test("rejects invalid registration and duplicate email", async () => {
-  const { app, database } = setup();
   const invalid = await request(app).post("/api/auth/register").send({ email: "no", password: "short", confirmPassword: "different", rol: "otro" });
   assert.equal(invalid.status, 400);
   assert.ok(invalid.body.fields.email);
@@ -48,11 +65,9 @@ test("rejects invalid registration and duplicate email", async () => {
   const duplicate = await request(app).post("/api/auth/register").send(payload);
   assert.equal(duplicate.status, 409);
   assert.equal(duplicate.body.error, "EMAIL_IN_USE");
-  database.close();
 });
 
 test("logs in and exposes only the public identity", async () => {
-  const { app, database } = setup();
   const payload = { nombre: "Profesional Demo", email: "prof@example.com", password: "segura123", confirmPassword: "segura123", rol: "profesional" };
   await request(app).post("/api/auth/register").send(payload);
   const response = await request(app).post("/api/auth/login").send({ email: payload.email, password: payload.password });
@@ -61,22 +76,38 @@ test("logs in and exposes only the public identity", async () => {
   assert.equal(response.body.user.email, payload.email);
   assert.equal(response.body.user.password_hash, undefined);
   assert.equal((await request(app).post("/api/auth/login").send({ email: payload.email, password: "incorrecta" })).status, 401);
-  database.close();
+});
+
+test("supports the three authenticated roles", async () => {
+  for (const rol of ["profesional", "paciente", "familiar"]) {
+    const response = await request(app).post("/api/auth/register").send({
+      nombre: `${rol} Demo`,
+      email: `${rol}@example.com`,
+      password: "segura123",
+      confirmPassword: "segura123",
+      rol
+    });
+    assert.equal(response.status, 201);
+    assert.equal(response.body.user.rol, rol);
+  }
 });
 
 test("validates the session and rejects missing or invalid tokens", async () => {
-  const { app, database } = setup();
   const registration = await request(app).post("/api/auth/register").send({ nombre: "Familiar Demo", email: "fam@example.com", password: "segura123", confirmPassword: "segura123", rol: "familiar" });
   assert.equal((await request(app).get("/api/auth/me").set("Authorization", `Bearer ${registration.body.token}`)).status, 200);
   assert.equal((await request(app).get("/api/auth/me")).status, 401);
   assert.equal((await request(app).get("/api/auth/me").set("Authorization", "Bearer invalido")).status, 401);
-  database.close();
 });
 
 test("reports API and database health", async () => {
-  const { app, database } = setup();
   const response = await request(app).get("/api/health");
   assert.equal(response.status, 200);
   assert.deepEqual(response.body, { status: "ok", database: "ok" });
-  database.close();
+});
+
+test("reports database health failure", async () => {
+  const unavailableApp = createApp({ config, database: { query: async () => { throw new Error("database unavailable"); } } });
+  const response = await request(unavailableApp).get("/api/health");
+  assert.equal(response.status, 503);
+  assert.deepEqual(response.body, { status: "error", database: "unavailable" });
 });

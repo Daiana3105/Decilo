@@ -32,13 +32,14 @@ function readBearerToken(header = "") {
 }
 
 function authMiddleware(database, config) {
-  return (request, response, next) => {
+  return async (request, response, next) => {
     const token = readBearerToken(request.headers.authorization);
     if (!token) return response.status(401).json({ error: "AUTH_REQUIRED", message: "Necesitás iniciar sesión." });
 
     try {
       const claims = jwt.verify(token, config.jwtSecret);
-      const user = database.prepare("SELECT * FROM users WHERE id = ?").get(Number(claims.sub));
+      const result = await database.query("SELECT * FROM users WHERE id = $1", [Number(claims.sub)]);
+      const user = result.rows[0];
       if (!user) return response.status(401).json({ error: "AUTH_INVALID", message: "La sesión ya no es válida." });
       request.user = user;
       next();
@@ -48,17 +49,18 @@ function authMiddleware(database, config) {
   };
 }
 
-function registerUser(database, values) {
-  const passwordHash = bcrypt.hashSync(values.password, 12);
-  const result = database.prepare(`
+async function registerUser(database, values) {
+  const passwordHash = await bcrypt.hash(values.password, 12);
+  const result = await database.query(`
     INSERT INTO users (nombre, email, password_hash, rol)
-    VALUES (@nombre, @email, @passwordHash, @rol)
-  `).run({ ...values, passwordHash });
-  return database.prepare("SELECT * FROM users WHERE id = ?").get(result.lastInsertRowid);
+    VALUES ($1, $2, $3, $4)
+    RETURNING *
+  `, [values.nombre, values.email, passwordHash, values.rol]);
+  return result.rows[0];
 }
 
-function verifyPassword(password, passwordHash) {
-  return bcrypt.compareSync(password, passwordHash);
+async function verifyPassword(password, passwordHash) {
+  return bcrypt.compare(password, passwordHash);
 }
 
 module.exports = {

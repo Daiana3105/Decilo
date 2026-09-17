@@ -1,5 +1,4 @@
 const express = require("express");
-const jwt = require("jsonwebtoken");
 const { loadConfig } = require("./config");
 const { createDatabase, publicUser } = require("./db");
 const {
@@ -10,38 +9,39 @@ const {
   verifyPassword
 } = require("./auth");
 
-function createApp({ config = loadConfig(), database = createDatabase(config.dbPath) } = {}) {
+function createApp({ config = loadConfig(), database } = {}) {
   const app = express();
   app.disable("x-powered-by");
   app.use(express.json({ limit: "32kb" }));
 
-  app.get("/api/health", (_request, response) => {
+  app.get("/api/health", async (_request, response) => {
     try {
-      database.prepare("SELECT 1 AS ok").get();
+      await database.query("SELECT 1 AS ok");
       response.json({ status: "ok", database: "ok" });
     } catch (_error) {
       response.status(503).json({ status: "error", database: "unavailable" });
     }
   });
 
-  app.post("/api/auth/register", (request, response) => {
+  app.post("/api/auth/register", async (request, response) => {
     const { errors, values } = validateRegistration(request.body);
     if (Object.keys(errors).length) return response.status(400).json({ error: "VALIDATION_ERROR", message: "Revisá los campos indicados.", fields: errors });
 
     try {
-      const user = registerUser(database, values);
+      const user = await registerUser(database, values);
       return response.status(201).json({ token: signToken(user, config), user: publicUser(user) });
     } catch (error) {
-      if (error.code === "SQLITE_CONSTRAINT_UNIQUE") return response.status(409).json({ error: "EMAIL_IN_USE", message: "Ese correo ya está registrado.", fields: { email: "Usá otro correo electrónico." } });
+      if (error.code === "23505") return response.status(409).json({ error: "EMAIL_IN_USE", message: "Ese correo ya está registrado.", fields: { email: "Usá otro correo electrónico." } });
       throw error;
     }
   });
 
-  app.post("/api/auth/login", (request, response) => {
+  app.post("/api/auth/login", async (request, response) => {
     const email = String(request.body?.email || "").trim().toLowerCase();
     const password = String(request.body?.password || "");
-    const user = database.prepare("SELECT * FROM users WHERE email = ? COLLATE NOCASE").get(email);
-    if (!user || !verifyPassword(password, user.password_hash)) return response.status(401).json({ error: "INVALID_CREDENTIALS", message: "El correo o la contraseña no son válidos." });
+    const result = await database.query("SELECT * FROM users WHERE email = $1", [email]);
+    const user = result.rows[0];
+    if (!user || !(await verifyPassword(password, user.password_hash))) return response.status(401).json({ error: "INVALID_CREDENTIALS", message: "El correo o la contraseña no son válidos." });
     return response.json({ token: signToken(user, config), user: publicUser(user) });
   });
 
@@ -59,9 +59,14 @@ function createApp({ config = loadConfig(), database = createDatabase(config.dbP
 }
 
 if (require.main === module) {
-  const config = loadConfig();
-  const database = createDatabase(config.dbPath);
-  createApp({ config, database }).listen(config.port, () => console.log(`DECILO API escuchando en http://localhost:${config.port}`));
+  (async () => {
+    const config = loadConfig();
+    const database = await createDatabase(config.database);
+    createApp({ config, database }).listen(config.port, () => console.log(`DECILO API escuchando en http://localhost:${config.port}`));
+  })().catch((error) => {
+    console.error(error.message);
+    process.exitCode = 1;
+  });
 }
 
 module.exports = { createApp };
