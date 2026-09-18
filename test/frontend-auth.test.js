@@ -12,6 +12,8 @@ test("frontend exposes the authenticated role flow", () => {
   assert.match(appSource, /\/api\/auth\/register/);
   assert.match(appSource, /\/api\/auth\/login/);
   assert.match(appSource, /\/api\/auth\/me/);
+  assert.match(appSource, /window\.DECILO_CONFIG\?\.apiPublicUrl/);
+  assert.match(appSource, /fetch\(`\$\{API_PUBLIC_URL\}\$\{path\}`/);
   assert.match(appSource, /sessionStorage\.setItem\(SESSION_KEY/);
   assert.match(appSource, /id="logout-button"/);
   assert.match(appSource, /navItems\(\)\.some\(\(item\) => item\.id === button\.dataset\.view\)/);

@@ -1,15 +1,15 @@
 ## 1. Configuración de la API y persistencia
 
-- [ ] 1.1 Agregar resolución de `DATABASE_URL` para PostgreSQL administrado con compatibilidad explícita para la configuración local actual; verificar que la API pueda inicializar `users` idempotentemente en ambos modos sin cambiar los contratos JSON.
-- [ ] 1.2 Ajustar el arranque de `server.js` para priorizar `process.env.PORT` en Render y conservar un valor local documentado; verificar que un puerto dinámico permita iniciar la API y responder `/api/health`.
-- [ ] 1.3 Mantener `JWT_SECRET`, `DATABASE_URL` y credenciales fuera del código y del frontend, actualizando solo la documentación de variables durante esta etapa; verificar con una inspección de Git que no haya secretos reales.
-- [ ] 1.4 Conservar registro, login, JWT, `/api/auth/me`, healthcheck y los tres roles sin cambios funcionales al cambiar el origen de conexión; verificar la suite existente contra PostgreSQL local.
+- [x] 1.1 Agregar resolución de `DATABASE_URL` para PostgreSQL administrado con compatibilidad explícita para la configuración local actual; verificar que la API pueda inicializar `users` idempotentemente en ambos modos sin cambiar los contratos JSON.
+- [x] 1.2 Ajustar el arranque de `server.js` para priorizar `process.env.PORT` en Render y conservar un valor local documentado; verificar que un puerto dinámico permita iniciar la API y responder `/api/health`.
+- [x] 1.3 Mantener `JWT_SECRET`, `DATABASE_URL` y credenciales fuera del código y del frontend, actualizando solo la documentación de variables durante esta etapa; verificar con una inspección de Git que no haya secretos reales.
+- [x] 1.4 Conservar registro, login, JWT, `/api/auth/me`, healthcheck y los tres roles sin cambios funcionales al cambiar el origen de conexión; verificar la suite existente contra PostgreSQL local.
 
 ## 2. CORS y configuración del frontend
 
-- [ ] 2.1 Implementar una lista explícita de orígenes permitidos para `FRONTEND_PUBLIC_URL` y el origen local documentado, rechazando orígenes arbitrarios; verificar solicitudes CORS permitidas y no permitidas.
-- [ ] 2.2 Hacer configurable la URL pública de la API para el frontend mediante `API_PUBLIC_URL`, manteniendo `/api` relativo para el proxy local cuando corresponda; verificar registro, login y `/api/auth/me` en ambos modos sin modificar `styles.css`.
-- [ ] 2.3 Confirmar que el Static Site no recibe `DATABASE_URL`, `JWT_SECRET`, contraseñas ni tokens durante el build o en sus recursos publicados; verificar el bundle y la configuración pública generada.
+- [x] 2.1 Implementar una lista explícita de orígenes permitidos para `FRONTEND_PUBLIC_URL` y el origen local documentado, rechazando orígenes arbitrarios; verificar solicitudes CORS permitidas y no permitidas.
+- [x] 2.2 Hacer configurable la URL pública de la API para el frontend mediante `API_PUBLIC_URL`, manteniendo `/api` relativo para el proxy local cuando corresponda; verificar registro, login y `/api/auth/me` en ambos modos sin modificar `styles.css`.
+- [x] 2.3 Confirmar que el Static Site no recibe `DATABASE_URL`, `JWT_SECRET`, contraseñas ni tokens durante el build o en sus recursos publicados; verificar el bundle y la configuración pública generada.
 
 ## 3. Preparación de servicios Render
 

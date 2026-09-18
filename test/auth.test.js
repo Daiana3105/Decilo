@@ -14,7 +14,8 @@ const databaseConfig = {
 };
 const config = {
   jwtSecret: "test-secret-that-is-longer-than-32-characters",
-  jwtExpiresIn: "1h"
+  jwtExpiresIn: "1h",
+  corsOrigins: ["https://decilo.example", "http://localhost:8080"]
 };
 
 let database;
@@ -110,4 +111,15 @@ test("reports database health failure", async () => {
   const response = await request(unavailableApp).get("/api/health");
   assert.equal(response.status, 503);
   assert.deepEqual(response.body, { status: "error", database: "unavailable" });
+});
+
+test("allows configured CORS origins and rejects arbitrary origins", async () => {
+  const allowed = await request(app).options("/api/health").set("Origin", "https://decilo.example");
+  assert.equal(allowed.status, 204);
+  assert.equal(allowed.headers["access-control-allow-origin"], "https://decilo.example");
+
+  const denied = await request(app).get("/api/health").set("Origin", "https://untrusted.example");
+  assert.equal(denied.status, 403);
+  assert.equal(denied.body.error, "CORS_ORIGIN_DENIED");
+  assert.equal(denied.headers["access-control-allow-origin"], undefined);
 });

@@ -4,6 +4,7 @@
   "private": true,
   "description": "DECILO: comunicacion aumentativa y acompanamiento fonoaudiologico",
   "scripts": {
+    "build:frontend": "node build-frontend.js",
     "start": "node server.js",
     "dev": "node --watch server.js",
     "test": "node --test"

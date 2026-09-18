@@ -2,6 +2,7 @@
   "use strict";
   const STORAGE_KEY = "decilo-mvp-v1";
   const SESSION_KEY = "decilo-session-v1";
+  const API_PUBLIC_URL = typeof window !== "undefined" ? String(window.DECILO_CONFIG?.apiPublicUrl || "").trim().replace(/\/$/, "") : "";
   const pictograms = [
     { id: "quiero", word: "Quiero", alt: "Mano abierta para expresar deseo", symbol: "🙋", category: "acciones", license: "DECILO inicial" },
     { id: "necesito", word: "Necesito", alt: "Mano levantada para pedir ayuda", symbol: "🤲", category: "acciones", license: "DECILO inicial" },
@@ -90,7 +91,7 @@
   async function apiRequest(path, options = {}) {
     const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
     if (session?.token) headers.Authorization = `Bearer ${session.token}`;
-    const response = await fetch(path, { ...options, headers });
+    const response = await fetch(`${API_PUBLIC_URL}${path}`, { ...options, headers });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) { const error = new Error(body.message || "No pudimos completar la solicitud."); error.body = body; error.status = response.status; throw error; }
     return body;

@@ -12,6 +12,18 @@ const {
 function createApp({ config = loadConfig(), database } = {}) {
   const app = express();
   app.disable("x-powered-by");
+  const corsOrigins = new Set(config.corsOrigins || []);
+  app.use((request, response, next) => {
+    const origin = request.headers.origin;
+    if (!origin) return next();
+    if (!corsOrigins.has(origin)) return response.status(403).json({ error: "CORS_ORIGIN_DENIED", message: "El origen no está autorizado." });
+    response.setHeader("Access-Control-Allow-Origin", origin);
+    response.setHeader("Vary", "Origin");
+    response.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    if (request.method === "OPTIONS") return response.sendStatus(204);
+    next();
+  });
   app.use(express.json({ limit: "32kb" }));
 
   app.get("/api/health", async (_request, response) => {
