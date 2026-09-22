@@ -2,16 +2,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const request = require("supertest");
 const { createApp } = require("../server");
-const { createDatabase } = require("../db");
-
-const databaseConfig = {
-  host: process.env.TEST_DB_HOST || process.env.DB_HOST || "127.0.0.1",
-  port: Number(process.env.TEST_DB_PORT || process.env.DB_PORT || 55432),
-  user: process.env.TEST_DB_USER || process.env.DB_USER || "decilo",
-  password: process.env.TEST_DB_PASSWORD || process.env.DB_PASSWORD || "decilo_dev_password",
-  database: process.env.TEST_DB_NAME || process.env.DB_NAME || "decilo",
-  max: 4
-};
+const { isolatedDatabase } = require("../scripts/test-database");
 const config = {
   jwtSecret: "test-secret-that-is-longer-than-32-characters",
   jwtExpiresIn: "1h",
@@ -20,18 +11,22 @@ const config = {
 
 let database;
 let app;
+let fixture;
 
 test.before(async () => {
-  database = await createDatabase(databaseConfig);
+  fixture = await isolatedDatabase();
+  database = fixture.database;
   app = createApp({ config, database });
 });
 
 test.beforeEach(async () => {
-  await database.query("TRUNCATE TABLE users RESTART IDENTITY");
+  await app.locals.loginNotifications?.drain();
+  await fixture.reset();
 });
 
 test.after(async () => {
-  await database.end();
+  await app?.locals.loginNotifications?.drain();
+  await fixture?.close();
 });
 
 test("registers a user with a hash and returns a JWT", async () => {

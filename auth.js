@@ -27,8 +27,22 @@ function signToken(user, config) {
 }
 
 function readBearerToken(header = "") {
-  const [scheme, token] = header.split(" ");
-  return scheme === "Bearer" && token ? token : null;
+  return typeof header === "string" ? /^Bearer ([^ ]+)$/.exec(header)?.[1] || null : null;
+}
+
+class AuthenticationError extends Error {}
+
+async function authenticateToken(database, config, token) {
+  let claims;
+  try {
+    if (typeof token !== "string") throw new Error();
+    claims = jwt.verify(token, config.jwtSecret, { algorithms: ["HS256"] });
+    if (typeof claims.sub !== "string" || !/^[1-9][0-9]{0,9}$/.test(claims.sub) ||
+        Number(claims.sub) > 2147483647 || !Number.isFinite(claims.exp) || claims.exp * 1000 <= Date.now()) throw new Error();
+  } catch (_) { throw new AuthenticationError("AUTH_INVALID"); }
+  const result = await database.query("SELECT * FROM users WHERE id = $1", [Number(claims.sub)]);
+  if (!result.rows[0]) throw new AuthenticationError("AUTH_INVALID");
+  return { user: result.rows[0], claims };
 }
 
 function authMiddleware(database, config) {
@@ -37,13 +51,11 @@ function authMiddleware(database, config) {
     if (!token) return response.status(401).json({ error: "AUTH_REQUIRED", message: "Necesitás iniciar sesión." });
 
     try {
-      const claims = jwt.verify(token, config.jwtSecret);
-      const result = await database.query("SELECT * FROM users WHERE id = $1", [Number(claims.sub)]);
-      const user = result.rows[0];
-      if (!user) return response.status(401).json({ error: "AUTH_INVALID", message: "La sesión ya no es válida." });
+      const { user } = await authenticateToken(database, config, token);
       request.user = user;
       next();
-    } catch (_error) {
+    } catch (error) {
+      if (!(error instanceof AuthenticationError)) return response.status(503).json({ error: "SERVICE_UNAVAILABLE", message: "El servicio no está disponible." });
       return response.status(401).json({ error: "AUTH_INVALID", message: "La sesión ya no es válida." });
     }
   };
@@ -67,6 +79,8 @@ module.exports = {
   PASSWORD_MIN_LENGTH,
   ROLES,
   authMiddleware,
+  authenticateToken,
+  AuthenticationError,
   registerUser,
   signToken,
   publicUser,

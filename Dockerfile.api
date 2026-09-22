@@ -6,7 +6,7 @@ ENV NODE_ENV=production
 COPY package*.json ./
 RUN npm ci --omit=dev
 
-COPY config.js db.js auth.js server.js ./
+COPY config.js db.js auth.js server.js notifications.js login-notifications.js realtime.js ./
 RUN chown -R node:node /app
 USER node
 
