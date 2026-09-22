@@ -49,3 +49,14 @@ El script `build-frontend.js` publica en `dist` únicamente `index.html`, `app.j
 ## 4. Completar la conexión entre servicios
 
 Copiá el origen HTTPS público del Static Site en `FRONTEND_PUBLIC_URL` del Web Service, sin ruta ni barra final. Comprobá que `https://<API_PUBLICA>/api/health` responda y que el frontend público pueda hacer solicitudes a la API. Las pruebas de registro, login, `/api/auth/me` y persistencia tras un redeploy corresponden a las tareas posteriores del cambio OpenSpec.
+
+## 5. Resumen final de verificación
+
+- Frontend: [https://decilo-web.onrender.com](https://decilo-web.onrender.com)
+- API: [https://decilo-api.onrender.com](https://decilo-api.onrender.com)
+- Healthcheck: `/api/health` respondió con API y base de datos en estado `ok`.
+- Registro, login y `/api/auth/me`: verificados.
+- Roles `profesional`, `paciente` y `familiar`: verificados.
+- CORS: el frontend público y localhost fueron permitidos; un origen arbitrario fue rechazado.
+- Persistencia: verificada después de redesplegar la API.
+- Secretos: no se publicaron secretos, credenciales, contraseñas ni tokens.
