@@ -7,7 +7,9 @@
     "build:frontend": "node build-frontend.js",
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node scripts/run-tests.js"
+    "test": "node scripts/run-tests.js",
+    "test:frontend": "node scripts/run-tests.js --browser",
+    "dev:frontend": "node scripts/serve-frontend.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -17,6 +19,7 @@
     "socket.io": "^4.8.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "socket.io-client": "^4.8.3",
     "supertest": "^7.1.1"
   }
