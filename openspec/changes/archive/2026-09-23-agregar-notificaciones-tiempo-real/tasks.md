@@ -80,7 +80,7 @@ la preparación documental posterior se registra al final de este archivo.
 - [x] 8.1 Actualizar `ARCHITECTURE.md` con dominio real, aviso secundario de login, errores seguros, recuperación REST por disparadores, endpoints, revisiones, límites y comandos de pruebas aisladas; explicitar que retención automática y recuperación de avisos no persistidos quedan fuera de alcance. Verificar correspondencia con implementación y retirar texto desactualizado sobre Render sin ampliar el dominio clínico.
 - [x] 8.2 Actualizar `DEPLOY_RENDER.md` y ejemplos públicos con build/arranque, recursos estáticos, `DATABASE_URL`, `JWT_SECRET`, `PORT`, `API_PUBLIC_URL`, `FRONTEND_PUBLIC_URL`, HTTPS/WSS y una instancia; verificar configuración sin secretos y sin crear recursos ni publicar cambios.
 - [x] 8.3 Documentar checklist posterior de Render para orígenes autorizados, dos sesiones, desconexión/redeploy y persistencia, junto con rollback de aplicación que conserve tablas y datos; verificar que diferencia preparación completada de despliegue real no ejecutado.
-- [ ] 8.4 Ejecutar `openspec validate agregar-notificaciones-tiempo-real --strict --no-interactive` y revisar diff/status de la implementación contra estas especificaciones; entregar resultados automatizados y Compose, limitaciones pendientes y preparación Render sin commit ni push salvo instrucción posterior explícita.
+- [x] 8.4 Ejecutar `openspec validate agregar-notificaciones-tiempo-real --strict --no-interactive` y revisar diff/status de la implementación contra estas especificaciones; entregar resultados automatizados y Compose, limitaciones pendientes y preparación Render sin commit ni push salvo instrucción posterior explícita.
 
 ### Preparación documental (2026-09-23)
 
@@ -88,5 +88,37 @@ ARCHITECTURE.md y DEPLOY_RENDER.md actualizados contra la implementación actual
 modelo persistente, REST, transporte JWT, recuperación, pruebas aisladas, build
 público, configuración Render y checklist de verificación/rollback que conserva
 PostgreSQL. Se completan 8.1, 8.2 y 8.3 exclusivamente como documentación.
-8.4 permanece pendiente de verificación integral posterior al despliegue; esta
-etapa no ejecuta commit, push ni despliegue y no acredita pruebas públicas nuevas.
+En esa etapa 8.4 quedaba pendiente de verificación integral posterior al despliegue;
+la preparación documental no ejecutó commit, push ni despliegue ni acreditó
+pruebas públicas nuevas. La evidencia posterior se registra a continuación.
+
+### Verificación integral en Render reportada (2026-09-23)
+
+El usuario confirmó la validación del commit `2715fbf` en `decilo-api` y
+`decilo-web`, ambos con deploy exitoso y estado Live:
+
+- `/api/health` respondió con `status: ok` y `database: ok`.
+- El frontend público permitió login y mostró campana, badge y panel funcionales.
+- Dos sesiones independientes de la misma cuenta se sincronizaron en tiempo real;
+  el aviso de nuevo inicio de sesión apareció sin recargar.
+- Lectura individual y lectura general sincronizaron ambas sesiones.
+- Recarga y reconexión conservaron el estado persistido.
+- No se detectaron secretos expuestos ni errores en los logs revisados.
+
+Esta evidencia corresponde a la comprobación manual del usuario en Render; no se
+presenta como una nueva inspección remota realizada por el asistente. Se suma a
+las pruebas automatizadas y a la evidencia local de Compose, responsive y
+persistencia tras reinicios ya registrada. El HEAD local corresponde al commit
+reportado y la revisión documental no modifica la lógica de aplicación.
+
+Se conservan los límites del diseño: una instancia/proceso de API, trabajo
+secundario sin cola durable, recuperación REST solo de avisos persistidos y sin
+retención automática. No se promete convergencia en cinco segundos durante
+arranque en frío o interrupciones de red. No hay pendientes de implementación
+adicionales derivados de la validación reportada. El cambio no se archiva y esta
+actualización no hace commit, push ni despliegue.
+
+Validaciones locales de cierre (2026-09-23): `npm.cmd test`, 52 aprobadas,
+0 fallidas; `npm.cmd run build:frontend`, correcto; validación estricta de OpenSpec,
+válida; `git diff --check`, sin errores (aviso LF/CRLF). Con la evidencia acumulada
+se completa 8.4: 30 de 30 tareas completadas, sin tareas pendientes.
