@@ -93,7 +93,62 @@
   function speakPhrase() { const message = document.getElementById("speech-message"); if (!phrase.length) { message.textContent = "Primero elegí al menos un pictograma."; return; } const text = phrase.map((item) => item.word).join(" "); if (!("speechSynthesis" in window)) { message.textContent = "La reproducción no está disponible en este dispositivo. La frase sigue visible."; return; } window.speechSynthesis.cancel(); const utterance = new SpeechSynthesisUtterance(text); utterance.lang = "es-AR"; utterance.onstart = () => { message.textContent = "Reproduciendo la frase en voz alta."; announce(message.textContent); }; utterance.onerror = () => { message.textContent = "No se pudo reproducir ahora. La frase sigue visible."; }; window.speechSynthesis.speak(utterance); }
   function modal(title, body) { const wrapper = document.createElement("div"); wrapper.className = "modal-backdrop"; wrapper.innerHTML = `<section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><header><h2 id="modal-title">${title}</h2><button class="icon-button" data-close-modal aria-label="Cerrar">×</button></header>${body}</section>`; document.body.appendChild(wrapper); wrapper.querySelector("[data-close-modal]").addEventListener("click", () => wrapper.remove()); wrapper.addEventListener("click", (event) => { if (event.target === wrapper) wrapper.remove(); }); return wrapper; }
   function openPatientModal() { if (session.role !== "profesional") return; const dialog = modal("Registrar paciente", `<form id="patient-form" class="form-grid"><label>Nombre completo<input name="name" required minlength="2" /></label><label>Correo del paciente<input name="email" type="email" required /></label><label class="full">Correo del familiar vinculado<input name="familyEmail" type="email" placeholder="carla@decilo.test" /></label><p id="modal-message" class="message full" role="alert"></p><button class="primary-button full" type="submit">Crear y vincular paciente</button></form>`); dialog.querySelector("#patient-form").addEventListener("submit", (event) => { event.preventDefault(); const form = new FormData(event.currentTarget); const name = String(form.get("name")).trim(); const email = String(form.get("email")).trim(); const familyEmail = String(form.get("familyEmail")).trim(); if (data.users.some((item) => item.email === email)) { dialog.querySelector("#modal-message").textContent = "Ese correo ya está registrado."; return; } const patient = { id: `pac-${Date.now()}`, name, email, role: "paciente", password: "decilo" }; const family = data.users.find((item) => item.email === familyEmail && item.role === "familiar"); data.users.push(patient); data.relationships.push({ professionalId: session.userId, patientId: patient.id, familyIds: family ? [family.id] : [] }); persist(); dialog.remove(); showToast("Paciente registrado y relación guardada"); render(); }); }
-  function openActivityModal() { if (session.role !== "profesional") return; const patients = patientsForCurrentUser(); const dialog = modal("Asignar actividad", `<form id="activity-form" class="form-grid"><label>Paciente<select name="patientId">${patients.map((item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`).join("")}</select></label><label>Puntos<input name="points" type="number" min="0" max="100" value="10" required /></label><label class="full">Título<input name="title" required minlength="3" /></label><label class="full">Instrucción<textarea name="instruction" required minlength="5"></textarea></label><label>Disponibilidad<select name="availability"><option>Hogar</option><option>Consulta</option></select></label><button class="primary-button full" type="submit">Confirmar asignación</button></form>`); dialog.querySelector("#activity-form").addEventListener("submit", (event) => { event.preventDefault(); const form = new FormData(event.currentTarget); data.activities.push({ id: `activity-${Date.now()}`, patientId: form.get("patientId"), professionalId: session.userId, title: String(form.get("title")).trim(), instruction: String(form.get("instruction")).trim(), availability: form.get("availability"), points: Number(form.get("points")), status: "available" }); persist(); dialog.remove(); showToast("Actividad asignada"); render(); }); }
+  function openActivityModal() {
+    if (session?.role !== "profesional") return;
+    const patients = patientsForCurrentUser().filter((item) => item.role === "paciente");
+    const opener = document.activeElement;
+    const dialog = modal("Asignar actividad", `<form id="activity-form" class="form-grid">
+      ${patients.length ? "" : `<p id="activity-empty" class="full">No tenés pacientes vinculados. Registrá y vinculá un paciente antes de asignar una actividad.</p>`}
+      <label for="activity-patient">Paciente<select id="activity-patient" name="patientId" required aria-describedby="activity-message${patients.length ? "" : " activity-empty"}" ${patients.length ? "" : "disabled"}>
+        <option value="">Seleccioná un paciente</option>${patients.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join("")}
+      </select></label>
+      <label>Puntos<input name="points" type="number" min="0" max="100" value="10" required /></label>
+      <label class="full">Título<input name="title" required minlength="3" /></label>
+      <label class="full">Instrucción<textarea name="instruction" required minlength="5"></textarea></label>
+      <label>Disponibilidad<select name="availability"><option>Hogar</option><option>Consulta</option></select></label>
+      <p id="activity-message" class="message full" role="alert"></p>
+      <button class="primary-button full" type="submit" ${patients.length ? "" : "disabled"}>Confirmar asignación</button>
+    </form>`);
+    dialog.classList.add("activity-modal");
+    const selector = dialog.querySelector("#activity-patient");
+    const message = dialog.querySelector("#activity-message");
+    const close = () => { dialog.remove(); opener?.focus(); };
+    dialog.querySelector("[data-close-modal]").addEventListener("click", close);
+    dialog.addEventListener("click", (event) => { if (event.target === dialog) close(); });
+    dialog.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") { event.preventDefault(); close(); }
+      if (event.key === "Tab") {
+        const controls = [...dialog.querySelectorAll("button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled)")];
+        const first = controls[0], last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      }
+    });
+    (patients.length ? selector : dialog.querySelector("[data-close-modal]")).focus();
+    selector.addEventListener("change", () => { selector.removeAttribute("aria-invalid"); message.textContent = ""; });
+    dialog.querySelector("#activity-form").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const form = new FormData(event.currentTarget);
+      const rawPatientId = form.get("patientId");
+      const patientId = typeof rawPatientId === "string" ? rawPatientId.trim() : "";
+      let error = "";
+      if (session?.role !== "profesional") error = "Necesitás una sesión profesional para asignar actividades.";
+      else if (!patientId) error = "Seleccioná un paciente para asignar la actividad.";
+      else if (!data.users.some((item) => item.id === patientId && item.role === "paciente") ||
+        !data.relationships.some((item) => item.patientId === patientId && item.professionalId === session.userId)) {
+        error = "El paciente no está disponible para esta asignación. Revisá la selección y su vinculación.";
+      }
+      if (error) {
+        message.textContent = error;
+        selector.setAttribute("aria-invalid", "true");
+        selector.focus();
+        return;
+      }
+      data.activities.push({ id: `activity-${Date.now()}`, patientId, professionalId: session.userId, title: String(form.get("title")).trim(), instruction: String(form.get("instruction")).trim(), availability: form.get("availability"), points: Number(form.get("points")), status: "available" });
+      persist(); close(); showToast("Actividad asignada"); render();
+      document.querySelector('[data-action="new-activity"]')?.focus();
+    });
+  }
   function openBoardModal(boardId) { if (session.role !== "profesional") return; const existing = data.boards.find((item) => item.id === boardId); const patients = patientsForCurrentUser(); const dialog = modal(existing ? "Editar tablero" : "Nuevo tablero", `<form id="board-form" class="form-grid"><label>Paciente<select name="patientId">${patients.map((item) => `<option value="${item.id}" ${existing?.patientId === item.id ? "selected" : ""}>${escapeHtml(item.name)}</option>`).join("")}</select></label><label class="full">Nombre del tablero<input name="name" value="${escapeHtml(existing?.name || "Tablero cotidiano")}" required /></label><fieldset class="full" style="border:0;padding:0"><legend class="eyebrow">Pictogramas disponibles</legend><div class="picto-grid">${pictograms.map((item) => `<label class="picto-tile"><input type="checkbox" name="pictograms" value="${item.id}" ${existing?.pictogramIds.includes(item.id) ? "checked" : ""} /><span class="symbol" aria-hidden="true">${item.symbol}</span><span class="word">${item.word}</span></label>`).join("")}</div></fieldset><button class="primary-button full" type="submit">Guardar tablero</button></form>`); dialog.querySelector("#board-form").addEventListener("submit", (event) => { event.preventDefault(); const form = new FormData(event.currentTarget); const pictogramIds = form.getAll("pictograms"); if (!pictogramIds.length) return; if (existing) Object.assign(existing, { patientId: form.get("patientId"), name: String(form.get("name")).trim(), pictogramIds }); else data.boards.push({ id: `board-${Date.now()}`, patientId: form.get("patientId"), professionalId: session.userId, name: String(form.get("name")).trim(), pictogramIds }); persist(); dialog.remove(); showToast("Tablero guardado en el orden seleccionado"); render(); }); }
   function normalizeUser(apiUser) { return { id: String(apiUser.id), name: apiUser.nombre, email: apiUser.email, role: apiUser.rol }; }
   async function apiRequest(path, options = {}) {
