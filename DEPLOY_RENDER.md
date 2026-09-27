@@ -81,6 +81,12 @@ dist/
   styles.css
   config.js
   notifications-client.js
+  manifest.webmanifest
+  icons/favicon-v1.png
+  icons/apple-touch-icon-v1.png
+  icons/decilo-192-v1.png
+  icons/decilo-512-v1.png
+  icons/decilo-maskable-512-v1.png
   vendor/socket.io.min.js
   vendor/socket.io.LICENSE.txt
 ```
@@ -124,7 +130,7 @@ casillas son una guía de comprobación futura, no evidencia de ejecución actua
 
 - [ ] Verificar deploy exitoso de API y Static Site de versiones compatibles, comandos de build/arranque, directorio `dist` y una sola instancia de API.
 - [ ] Verificar healthcheck HTTP 200 con API y PostgreSQL `ok`, considerando arranque en frío.
-- [ ] Verificar los siete archivos públicos, scripts JavaScript reales y ausencia de secretos; `API_PUBLIC_URL` debe apuntar al origen HTTPS correcto.
+- [ ] Verificar los trece archivos públicos actuales, scripts JavaScript reales y ausencia de secretos; `API_PUBLIC_URL` debe apuntar al origen HTTPS correcto.
 - [ ] Verificar CORS desde `https://decilo-web.onrender.com`, polling y upgrade WSS en `/socket.io/`; rechazar origen arbitrario y JWT inválido. No copiar cabeceras Authorization ni frames con credenciales a reportes.
 - [ ] Registrar una cuenta de prueba si hace falta; comprobar login, `/api/auth/me` y acceso de los tres roles. La creación secundaria del aviso nunca debe bloquear la entrega del JWT.
 - [ ] Comprobar campana solo autenticado, badge exacto y oculto en cero, listado, fechas, paginación, estados vacío/carga/error, teclado y panel responsive. Abrir no debe marcar leído.
@@ -184,3 +190,51 @@ de notificaciones ni completa el checklist anterior o la tarea 8.4.
 - CORS: el frontend público y localhost fueron permitidos; un origen arbitrario fue rechazado.
 - Persistencia: verificada después de redesplegar la API.
 - Secretos: no se publicaron secretos, credenciales, contraseñas ni tokens.
+
+## 8. Preparación PWA del issue #12 (sin despliegue)
+
+El artefacto incluye manifest y cinco íconos, nombre DECILO y apertura standalone
+desde `/`. No requiere nuevos servicios, variables, service worker ni soporte
+offline. La ayuda al pie explica los menús de Chrome y Safari/iPhone. Los PNG
+están versionados: Render usa los recursos del commit y no ejecuta el generador.
+
+Después de autorización para publicar, conservar `npm ci && npm run build:frontend`
+y Publish Directory `dist`. En el Dashboard del **Static Site**, sección Headers,
+preparar estas reglas; no configurarlas en la API ni suponer que nginx.conf se usa
+en Render:
+
+| Path | Header | Value |
+| --- | --- | --- |
+| `/` | `Cache-Control` | `no-cache` |
+| `/index.html` | `Cache-Control` | `no-cache` |
+| `/manifest.webmanifest` | `Cache-Control` | `no-cache` |
+| `/manifest.webmanifest` | `Content-Type` | `application/manifest+json` |
+| `/icons/*` | `Cache-Control` | `no-cache` |
+| `/icons/*.png` | `Content-Type` | `image/png` |
+
+Ver [headers de Static Sites](https://render.com/docs/static-site-headers).
+Este frontend navega mediante estado interno, no rutas de History API: no necesita
+rewrite global `/* → /index.html`. Si existe esa regla, retirarla en la etapa
+autorizada para que un ícono/manifest faltante responda 404. Los archivos existentes
+tienen precedencia sobre rewrites, pero los faltantes podrían devolver HTML.
+Ver [reglas de Render](https://render.com/docs/redirects-rewrites).
+
+Verificar por HTTPS en `https://decilo-web.onrender.com`: `/`, manifest y los cinco
+PNG deben responder 200 con tipo correcto; `/icons/inexistente.png` y
+`/inexistente.webmanifest` deben responder 404. Comprobar headers efectivos y
+ETag/Last-Modified, revalidación y ausencia de contenido mixto. La API permanece en
+su origen configurado y Socket.IO usa HTTPS/WSS; las reglas anteriores no les aplican.
+
+Al cambiar imágenes, incrementar el sufijo de versión en generador, manifest,
+HTML y allowlist/pruebas. Mantener `id: /` estable. `no-cache` permite guardar
+recursos públicos pero exige revalidarlos; no equivale a caché de API o datos de
+cuenta. El sistema operativo decide cuándo actualiza el ícono ya instalado. Probar
+cerrar y reabrir antes de reinstalar; advertir que una reinstalación puede no
+conservar datos locales. No borrar sessionStorage/localStorage para actualizar.
+Un rollback del frontend debe recuperar en conjunto HTML, manifest e imágenes de
+la misma versión y revisar los headers; no elimina accesos instalados ni datos.
+
+Pendiente después de publicación autorizada: HTTP público real, instalación en
+Chrome escritorio/Android y Safari iPhone con versión/fecha, nombre/ícono,
+standalone, reapertura y sesión. No confundir pruebas de viewport con instalación
+en celular. Esta documentación no modifica Dashboard, auto-deploy ni producción.

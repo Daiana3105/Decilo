@@ -35,7 +35,11 @@ const test = base.extend({
       execFileSync(process.execPath, ["build-frontend.js"], {
         cwd: path.join(__dirname, ".."), env: { ...process.env, API_PUBLIC_URL: origin(api.httpServer) }, stdio: "pipe"
       });
-      app.use(express.static(path.join(__dirname, "../dist")));
+      app.use(express.static(path.join(__dirname, "../dist"), {
+        setHeaders(res, file) {
+          if (/\.(html|webmanifest|png)$/.test(file)) res.setHeader("Cache-Control", "no-cache");
+        }
+      }));
       const hash = await bcrypt.hash(password, 4);
       const users = {};
       for (const role of ["paciente", "familiar", "profesional"]) {
