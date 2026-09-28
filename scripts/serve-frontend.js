@@ -6,6 +6,10 @@ execFileSync(process.execPath, [path.join(__dirname, "../build-frontend.js")], {
   env: { ...process.env, API_PUBLIC_URL: process.env.API_PUBLIC_URL || "http://localhost:3000" }, stdio: "inherit"
 });
 const app = express();
-app.use(express.static(path.join(__dirname, "../dist")));
+app.use(express.static(path.join(__dirname, "../dist"), {
+  setHeaders(res, file) {
+    if (/\.(html|webmanifest|png)$/.test(file)) res.setHeader("Cache-Control", "no-cache");
+  }
+}));
 const port = Number(process.env.FRONTEND_PORT || 8080);
 app.listen(port, "127.0.0.1", () => console.log(`DECILO frontend: http://localhost:${port}`));
