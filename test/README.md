@@ -143,3 +143,141 @@ Junto con la evidencia anterior y esta documentación, se completan 7.4 y 7.5.
 La receta aislada queda documentada para reproducción; no se afirma haberla
 ejecutado nuevamente ni que la prueba reportada usara sus puertos específicos.
 Las tareas 8.1–8.4 siguen pendientes. No se desplegó en Render.
+
+## Identidad PWA y regresiones
+
+Los cinco PNG de `icons/` están versionados y se generan localmente mediante
+`node scripts/generate-pwa-icons.js`. `node scripts/generate-pwa-icons.js --check`
+comprueba igualdad byte a byte sin escribir. Usar Node 22 como el build Docker.
+No requiere fuentes instaladas, descargas ni dependencias adicionales: la D es
+geometría original, rasterizada con cuatro muestras por eje y codificada RGBA PNG
+con zlib de Node, sin metadatos. Naranja #e06a42, D blanca centrada y margen dentro
+del círculo seguro de radio 40%; variantes any/favicon redondeadas, Apple/maskable
+opacas para que el sistema aplique su máscara.
+
+| Archivo en icons/ | Dimensiones | Uso |
+| --- | --- | --- |
+| favicon-v1.png | 32×32 | Pestaña del navegador |
+| apple-touch-icon-v1.png | 180×180 | Safari/iPhone |
+| decilo-192-v1.png | 192×192 | Manifest any |
+| decilo-512-v1.png | 512×512 | Manifest any |
+| decilo-maskable-512-v1.png | 512×512 | Manifest maskable |
+
+Al cambiar el diseño, actualizar versión de nombres, referencias, allowlist y
+pruebas conjuntamente; regenerar y revisar visualmente. El script queda fuera de
+dist y del runtime. Las pruebas decodifican PNG, verifican dimensiones, opacidad,
+margen y ausencia de metadatos; además prueban manifest, referencias HTML y bytes
+copiados al build. La lista exacta de trece archivos públicos evita filtrar fuentes.
+Los controles de secretos leen como texto solo los archivos que no son PNG.
+
+`e2e/pwa.spec.js` cubre MIME/404/revalidación, decodificación de íconos, ayuda nativa
+por teclado a 320/768/1280 px y zoom CSS 200%, registro/login/restauración/logout,
+cambio de cuenta y notificaciones sobre API aislada. Verifica perfiles sin service
+workers ni Cache Storage y no-store de notificaciones. No certifica instalación
+del sistema operativo ni ausencia de todo almacenamiento: el MVP conserva JWT en
+sessionStorage y dominio demostrativo en localStorage. La prueba de actualización
+Node usa directorio temporal y servidor exclusivo, sin modificar dist o datos reales.
+
+Ejecutar secuencialmente: `npm.cmd ci`, `npm.cmd test`,
+`npm.cmd run build:frontend`, `npm.cmd run test:frontend`; después validar OpenSpec
+del cambio y global con `--strict`, y `git diff --check`. Para Docker ejecutar
+`docker compose config --quiet`, `docker compose up --build -d`,
+`docker compose ps`; verificar manifest, cinco íconos, MIME, no-cache, 404 y
+`/api/health` en localhost:8080 sin borrar volúmenes. No imprimir `compose config`
+sin `--quiet`, porque expone variables privadas.
+
+La instalación real en Chrome escritorio/Android y Safari/iPhone sigue requiriendo
+dispositivo, navegador/OS, fecha, nombre/ícono y apertura standalone comprobados.
+Usar HTTPS autorizado en móvil. Una captura de viewport no completa ese control.
+La verificación pública de Render espera autorización posterior de publicación.
+
+### Validación local del issue #12 — 2026-09-27
+
+Node 22.21.1. `npm ci` se completó en la etapa anterior sin cambiar dependencias.
+`npm.cmd test`: 73 aprobadas, 0 fallidas, 0 omitidas; build frontend correcto.
+El primer intento tuvo 72 aprobadas y un fallo en la prueba nueva de actualización:
+Node fetch agregaba `no-cache` a la solicitud condicional y Express respondía 200.
+La prueba ahora pide revalidación explícita con `max-age=0` e If-None-Match; conserva
+la exigencia 304 sin cambios y 200 con ETag distinto al actualizar el manifest.
+
+`npx.cmd playwright test` directo: 32 fallos de preparación, con mensaje «Base de
+pruebas ausente o insegura». No crea el PostgreSQL temporal ni su marcador interno.
+La ejecución válida para esta configuración es `npm.cmd run test:frontend`; no
+configurar credenciales manualmente ni eludir la protección contra bases externas.
+
+`npm.cmd run test:frontend`: 32 aprobadas, 0 fallidas, sin omisiones (Edge headless,
+PostgreSQL temporal). Incluye las 26 regresiones anteriores y seis pruebas PWA.
+Las nueve pruebas Node nuevas cubren identidad, PNG, distribución y actualización.
+El aviso NO_COLOR/FORCE_COLOR es informativo; PowerShell lo representa como stderr,
+pero el proceso terminó con código 0. Se revisó la ayuda por teclado, tamaños y
+zoom en navegador; esto no acredita instalación física ni lectura con lector de pantalla.
+
+Docker Desktop 29.8.0: `docker compose config --quiet`, `up --build -d` y `ps`
+correctos. API y PostgreSQL saludables, frontend disponible en localhost:8080.
+Manifest: 200 application/manifest+json; los cinco PNG: 200 image/png e igualdad
+binaria con las fuentes. HTML/manifest/íconos: no-cache; ETag del manifest: 304 al
+revalidar. Ícono y manifest inexistentes: 404. `/api/health`: status/database ok.
+Handshake Engine.IO polling 200 y WebSocket upgrade 101 comprobados sin login ni
+escrituras de prueba en la base local. No se borraron volúmenes. Esta comprobación
+usó el Compose existente solicitado, no un segundo proyecto Compose aislado.
+Un navegador Edge limpio cargó login y ayuda desde Nginx, con cero workers y
+cero entradas Cache Storage.
+El servidor de desarrollo temporal en 18080 también entregó HTML/manifest/PNG con
+MIME y no-cache correctos y se detuvo después de la comprobación.
+
+OpenSpec: cambio válido y global 7 aprobados, 0 fallidos, con avisos informativos
+sobre requisitos extensos preexistentes. Al finalizar esa validación no había
+evidencia de instalación real; el avance posterior de escritorio se registra abajo.
+
+### Evidencia adicional para revisión del issue #12 — 2026-09-27
+
+La usuaria confirmó que instaló DECILO desde http://localhost:8080 en Chrome de
+escritorio: apareció el ícono naranja con la D y se abrió en una ventana propia.
+Es evidencia manual reportada por la usuaria, distinta de Edge headless. No se
+informaron versiones de navegador/OS ni reapertura o recorrido completo de sesión
+y accesibilidad. La tarea 5.1 sigue pendiente porque agrupa escritorio y Android;
+no acredita Android, Safari/iPhone ni el sitio público HTTPS de Render.
+
+Se completó la tarea 4.5 con **un segundo proyecto Compose**:
+
+| Recurso | Proyecto de prueba |
+| --- | --- |
+| Nombre | `decilo-pwa-12-check` |
+| Frontend | `http://localhost:58082` |
+| Puerto PostgreSQL del host | `55434` |
+| Red | `decilo-pwa-12-check_default` |
+| Volumen PostgreSQL | `decilo-pwa-12-check_decilo-postgres` |
+
+Antes de crear el proyecto se comprobó que no existían contenedores con ese nombre
+y que ambos puertos estaban libres. Se generaron credenciales aleatorias nuevas
+en un archivo temporal privado fuera del repositorio. El proceso de prueba quitó
+variables heredadas DB/JWT/Compose y pasó explícitamente `--env-file`; no usó el
+.env de desarrollo ni publicó sus valores. Se compararon red y montajes para
+confirmar que no compartía volumen ni red con el proyecto `decilo` existente.
+
+Comandos ejecutados desde la raíz, con `$archivoPrivado` representando la ruta
+temporal creada (no contiene ni muestra credenciales en esta documentación):
+
+```powershell
+docker compose -p decilo-pwa-12-check --env-file $archivoPrivado config --quiet
+docker compose -p decilo-pwa-12-check --env-file $archivoPrivado up --build -d --wait
+docker compose -p decilo-pwa-12-check --env-file $archivoPrivado ps
+docker compose -p decilo-pwa-12-check --env-file $archivoPrivado stop
+```
+
+Build y arranque correctos; API y PostgreSQL saludables. Antes de detenerlo se
+verificaron por localhost:58082 HTML y manifest 200, cinco PNG 200 y bytes iguales
+a sus fuentes, MIME text/html, application/manifest+json e image/png según recurso,
+Cache-Control no-cache, ETag/If-None-Match 304, ícono y manifest inexistentes 404,
+`/api/health` con status/database ok, polling Engine.IO 200 y upgrade WebSocket 101.
+Edge headless abrió login y ayuda con cero workers y entradas Cache Storage.
+No se crearon cuentas ni se realizaron escrituras de prueba en la base original.
+
+Se detuvo **solo el proyecto de prueba** y se conservaron sus contenedores y
+volumen, además del archivo privado temporal para reutilizar sus credenciales.
+Antes y después, los contenedores originales mantuvieron IDs, horas de arranque
+y montajes idénticos. No se ejecutó down, eliminación de volúmenes ni despliegue.
+
+Esta etapa solo agrega evidencia documental: conserva los resultados anteriores
+de 73 pruebas Node y 32 Playwright mediante npm run test:frontend, sin afirmar que
+se ejecutaron nuevamente. OpenSpec estricto y diff se validan con esta actualización.

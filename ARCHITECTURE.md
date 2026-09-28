@@ -117,11 +117,24 @@ quedan fuera de esa garantía. No hay correo, push, revocación global ni avisos
 ## Build y despliegue
 
 Publicar solo `dist`, generado con `npm run build:frontend`; nunca servir la raíz
-del repositorio, cuyo `config.js` es privado del backend. El build incluye siete
+del repositorio, cuyo `config.js` es privado del backend. El build incluye trece
 archivos públicos: `index.html`, `app.js`, `styles.css`, `config.js`,
 `notifications-client.js`, `vendor/socket.io.min.js` y su licencia
-`vendor/socket.io.LICENSE.txt`. Socket.IO se copia de la dependencia fijada, sin CDN.
+`vendor/socket.io.LICENSE.txt`, `manifest.webmanifest` y cinco PNG en `icons/`:
+favicon 32, apple-touch-icon 180, íconos 192/512 y maskable 512.
+Socket.IO se copia de la dependencia fijada, sin CDN.
 El `config.js` generado solo contiene `API_PUBLIC_URL`; no lleva secretos.
+
+La identidad instalable usa nombre DECILO, D blanca sobre naranja y rutas de
+inicio/alcance `/` con display standalone. El pie de página ofrece ayuda nativa
+para Chrome y Safari, disponible también sin sesión, sin modificar el render de
+app.js ni registrar listeners de instalación. No hay service worker, Cache API,
+offline ni interceptación de API/Socket.IO. JWT y datos demostrativos mantienen
+sus mecanismos existentes; instalar no transfiere sesiones ni datos entre contextos.
+Nginx y el servidor de desarrollo revalidan HTML, manifest e íconos con no-cache.
+Los nombres de imágenes se versionan al cambiar su contenido, manteniendo id `/`.
+El generador local reproducible y las comprobaciones se documentan en
+[test/README.md](test/README.md#identidad-pwa-y-regresiones).
 
 Compose construye el frontend en una etapa Node y lo sirve con Nginx: `/api/`
 y `/socket.io/` se enrutan a la API, con upgrade y timeout 75s. Sin URL pública,

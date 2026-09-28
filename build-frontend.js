@@ -3,7 +3,11 @@ const path = require("node:path");
 
 const projectRoot = __dirname;
 const distDirectory = path.join(projectRoot, "dist");
-const publicFiles = ["index.html", "app.js", "styles.css", "notifications-client.js"];
+const publicFiles = [
+  "index.html", "app.js", "styles.css", "notifications-client.js", "manifest.webmanifest",
+  "icons/favicon-v1.png", "icons/apple-touch-icon-v1.png", "icons/decilo-192-v1.png",
+  "icons/decilo-512-v1.png", "icons/decilo-maskable-512-v1.png"
+];
 const apiPublicUrl = String(process.env.API_PUBLIC_URL || "").trim().replace(/\/$/, "");
 if (apiPublicUrl) {
   const url = new URL(apiPublicUrl);
@@ -16,6 +20,7 @@ fs.rmSync(distDirectory, { recursive: true, force: true });
 fs.mkdirSync(distDirectory, { recursive: true });
 
 for (const fileName of publicFiles) {
+  fs.mkdirSync(path.dirname(path.join(distDirectory, fileName)), { recursive: true });
   fs.copyFileSync(path.join(projectRoot, fileName), path.join(distDirectory, fileName));
 }
 

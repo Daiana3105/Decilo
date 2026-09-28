@@ -20,7 +20,12 @@ test("builds a public frontend bundle with safe API configuration", () => {
   runFrontendBuild(apiPublicUrl);
 
   const files = fs.readdirSync(distDirectory, { recursive: true }).filter((file) => fs.statSync(path.join(distDirectory, file)).isFile()).map((file) => file.replaceAll("\\", "/")).sort();
-  assert.deepEqual(files, ["app.js", "config.js", "index.html", "notifications-client.js", "styles.css", "vendor/socket.io.LICENSE.txt", "vendor/socket.io.min.js"]);
+  assert.deepEqual(files, ["app.js", "config.js", "index.html", "notifications-client.js", "styles.css",
+    "manifest.webmanifest", "icons/favicon-v1.png", "icons/apple-touch-icon-v1.png", "icons/decilo-192-v1.png",
+    "icons/decilo-512-v1.png", "icons/decilo-maskable-512-v1.png", "vendor/socket.io.LICENSE.txt", "vendor/socket.io.min.js"].sort());
+  for (const file of files.filter((name) => name.endsWith(".png") || name.endsWith(".webmanifest"))) {
+    assert.deepEqual(fs.readFileSync(path.join(distDirectory, file)), fs.readFileSync(path.join(projectRoot, file)));
+  }
 
   const configSource = fs.readFileSync(path.join(distDirectory, "config.js"), "utf8");
   const indexSource = fs.readFileSync(path.join(distDirectory, "index.html"), "utf8");
@@ -34,7 +39,7 @@ test("builds a public frontend bundle with safe API configuration", () => {
   assert.doesNotMatch(indexSource, /<script[^>]+src="https?:/);
   assert.match(appSource, /window\.DECILO_CONFIG\?\.apiPublicUrl/);
 
-  const publicSource = files.map((fileName) => fs.readFileSync(path.join(distDirectory, fileName), "utf8")).join("\n");
+  const publicSource = files.filter((name) => !name.endsWith(".png")).map((fileName) => fs.readFileSync(path.join(distDirectory, fileName), "utf8")).join("\n");
   for (const forbidden of ["DATABASE_URL", "JWT_SECRET", "DB_PASSWORD", "server.js", "auth.js"]) {
     assert.equal(publicSource.includes(forbidden), false, `No debe publicar ${forbidden}`);
   }

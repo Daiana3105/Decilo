@@ -26,6 +26,15 @@ button { cursor: pointer; }
 button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid var(--coral); outline-offset: 3px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
+.install-help { width: min(760px, calc(100% - 32px)); margin: 24px auto; color: var(--ink); line-height: 1.55; overflow-wrap: anywhere; }
+.install-help details { border: 2px solid var(--line); border-radius: 14px; background: var(--surface); }
+.install-help summary { min-height: 48px; padding: 12px 16px; color: var(--petrol); font-weight: 700; cursor: pointer; }
+.install-help summary:focus-visible { outline: 3px solid var(--petrol); outline-offset: 3px; border-radius: 12px; }
+.install-help-content { padding: 0 16px 16px; }
+.install-help-content ul { padding-left: 24px; }
+.install-help-content li + li { margin-top: 12px; }
+.install-help-content p:last-child { margin-bottom: 0; }
+
 .login-shell { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: radial-gradient(circle at 12% 8%, #dcecf0 0, transparent 32%), var(--canvas); }
 .login-card { width: min(760px, 100%); padding: clamp(24px, 5vw, 56px); background: var(--surface); border: 2px solid var(--line); border-radius: 24px; box-shadow: var(--shadow); }
 .brand-mark { display: inline-flex; align-items: center; gap: 10px; color: var(--petrol); font-weight: 700; letter-spacing: .08em; }
