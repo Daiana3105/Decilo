@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="DECILO conecta comunicación aumentativa, actividades y acompañamiento fonoaudiológico." />
     <title>DECILO | Comunicación que acompaña</title>
+    <meta name="theme-color" content="#e06a42" />
+    <meta name="apple-mobile-web-app-title" content="DECILO" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icons/favicon-v1.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon-v1.png" sizes="180x180" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600;700&display=swap" rel="stylesheet" />
@@ -12,6 +18,21 @@
   </head>
   <body>
     <div id="app" class="app-shell"></div>
+    <footer class="install-help">
+      <details>
+        <summary>Cómo instalar DECILO</summary>
+        <div class="install-help-content">
+          <p>Podés agregar DECILO a tu dispositivo para abrirla desde su ícono.</p>
+          <ul>
+            <li><strong>Chrome en Android:</strong> abrí el menú de tres puntos y elegí «Instalar aplicación» o «Agregar a la pantalla principal».</li>
+            <li><strong>Chrome en computadora:</strong> buscá «Instalar DECILO» en la barra de direcciones o la opción de instalación en el menú de Chrome.</li>
+            <li><strong>Safari en iPhone:</strong> abrí Compartir y elegí «Agregar a pantalla de inicio». Si aparece «Abrir como app web», activalo antes de agregarla.</li>
+          </ul>
+          <p>Las opciones pueden variar según el navegador. Si no aparecen o preferís no instalar, podés seguir usando DECILO aquí.</p>
+          <p>DECILO necesita conexión a Internet. Al abrirla como aplicación puede pedirte iniciar sesión nuevamente. Los tableros y actividades locales pueden no compartirse entre el navegador y la aplicación instalada.</p>
+        </div>
+      </details>
+    </footer>
     <div id="live-region" class="sr-only" aria-live="polite"></div>
     <script src="config.js"></script>
     <script src="vendor/socket.io.min.js"></script>
