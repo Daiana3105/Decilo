@@ -24,12 +24,18 @@
 - [x] 4.2 Agregar Playwright de recursos HTTP/MIME y ayuda sin prompt, teclado/responsive y uso sin instalación.
 - [x] 4.3 Verificar en perfil limpio cero workers/Cache Storage antes y después de login, notificaciones, logout y cambio de cuenta; API/polling/WebSocket por red sin caché PWA ni proxy-cache nuevo.
 - [x] 4.4 Ejecutar npm.cmd test, npm.cmd run build:frontend y npm.cmd run test:frontend secuencialmente con base temporal aislada; registrar resultados y regresiones de autenticación, actividades y notificaciones.
-- [ ] 4.5 Construir y probar Docker/Nginx en Compose aislado: recursos 200, faltantes 404, MIME, no-cache/revalidación, healthcheck, polling y upgrade; documentar cualquier bloqueo de entorno.
+- [x] 4.5 Construir y probar Docker/Nginx en Compose aislado: recursos 200, faltantes 404, MIME, no-cache/revalidación, healthcheck, polling y upgrade; documentar cualquier bloqueo de entorno.
 - [x] 4.6 Simular actualización de manifest e imagen versionada en entorno aislado y verificar referencias tras revalidación sin alterar id ni datos privados.
 
 ## 5. Evidencia manual y documentación
 
 - [ ] 5.1 Probar instalación real en Chrome escritorio y Android mediante entorno HTTPS autorizado, registrar versiones, nombre, ícono, standalone, reapertura, login/navegación/logout y accesibilidad.
+
+  Avance parcial informado por la usuaria el 2026-09-27: instaló DECILO desde
+  http://localhost:8080 en Chrome de escritorio; apareció el ícono naranja con
+  la D y se abrió en una ventana propia. No se informaron versión de Chrome/OS,
+  reapertura ni recorrido completo de sesión/accesibilidad. No acredita HTTPS
+  público ni Android; la tarea agrupada permanece pendiente.
 - [ ] 5.2 Probar Safari/iPhone real: ayuda, Agregar a pantalla de inicio, nombre/ícono, standalone, orientación y sesión; registrar versión y limitaciones sin sustituirla por emulación.
 - [x] 5.3 Documentar resultados, ausencia de offline y diferencias entre actualización de recursos y launcher, sin capturar datos personales ni tokens.
 - [ ] 5.4 Tras autorización posterior de publicación, verificar recursos/headers HTTPS y rutas reales de Render e instalación móvil contra esa versión; mantener pendiente mientras no exista esa autorización/evidencia. Esta tarea no autoriza desplegar.
@@ -39,4 +45,4 @@
 - [x] 6.1 Ejecutar openspec.cmd status --change hacer-decilo-pwa-instalable, openspec.cmd validate hacer-decilo-pwa-instalable --strict, openspec.cmd validate --all --strict y git diff --check sobre la implementación.
 - [x] 6.2 Revisar diff completo, secretos, archivos generados y alcance exclusivo del issue #12; marcar únicamente tareas con evidencia y enumerar pendientes antes de solicitar etapa posterior.
 
-Las casillas marcadas cuentan con implementación y evidencia local en test/README.md (validación del issue #12). La tarea 4.5 permanece parcial: se validó el Compose existente en localhost:8080 por pedido del usuario, conservando datos y volúmenes, pero no un segundo proyecto aislado. Las instalaciones reales 5.1/5.2 y la verificación pública 5.4 siguen pendientes. No abrir PR, mergear, archivar ni desplegar sin autorización posterior.
+Las casillas marcadas cuentan con implementación y evidencia local en test/README.md. La tarea 4.5 se completó el 2026-09-27 con el segundo proyecto decilo-pwa-12-check (58082/55434), red y volumen propios. El proyecto de prueba se detuvo sin borrar volúmenes; los contenedores originales conservaron IDs, horas de arranque y montajes. La tarea 5.1 tiene evidencia parcial de Chrome escritorio; Android, Safari/iPhone (5.2) y Render público (5.4) siguen pendientes. Esta etapa autoriza abrir PR hacia develop; no autoriza merge, cierre del issue, archivo OpenSpec ni despliegue.

@@ -226,5 +226,58 @@ El servidor de desarrollo temporal en 18080 también entregó HTML/manifest/PNG 
 MIME y no-cache correctos y se detuvo después de la comprobación.
 
 OpenSpec: cambio válido y global 7 aprobados, 0 fallidos, con avisos informativos
-sobre requisitos extensos preexistentes. No hay evidencia de instalación real en
-Chrome escritorio/Android o Safari/iPhone, ni verificación pública PWA en Render.
+sobre requisitos extensos preexistentes. Al finalizar esa validación no había
+evidencia de instalación real; el avance posterior de escritorio se registra abajo.
+
+### Evidencia adicional para revisión del issue #12 — 2026-09-27
+
+La usuaria confirmó que instaló DECILO desde http://localhost:8080 en Chrome de
+escritorio: apareció el ícono naranja con la D y se abrió en una ventana propia.
+Es evidencia manual reportada por la usuaria, distinta de Edge headless. No se
+informaron versiones de navegador/OS ni reapertura o recorrido completo de sesión
+y accesibilidad. La tarea 5.1 sigue pendiente porque agrupa escritorio y Android;
+no acredita Android, Safari/iPhone ni el sitio público HTTPS de Render.
+
+Se completó la tarea 4.5 con **un segundo proyecto Compose**:
+
+| Recurso | Proyecto de prueba |
+| --- | --- |
+| Nombre | `decilo-pwa-12-check` |
+| Frontend | `http://localhost:58082` |
+| Puerto PostgreSQL del host | `55434` |
+| Red | `decilo-pwa-12-check_default` |
+| Volumen PostgreSQL | `decilo-pwa-12-check_decilo-postgres` |
+
+Antes de crear el proyecto se comprobó que no existían contenedores con ese nombre
+y que ambos puertos estaban libres. Se generaron credenciales aleatorias nuevas
+en un archivo temporal privado fuera del repositorio. El proceso de prueba quitó
+variables heredadas DB/JWT/Compose y pasó explícitamente `--env-file`; no usó el
+.env de desarrollo ni publicó sus valores. Se compararon red y montajes para
+confirmar que no compartía volumen ni red con el proyecto `decilo` existente.
+
+Comandos ejecutados desde la raíz, con `$archivoPrivado` representando la ruta
+temporal creada (no contiene ni muestra credenciales en esta documentación):
+
+```powershell
+docker compose -p decilo-pwa-12-check --env-file $archivoPrivado config --quiet
+docker compose -p decilo-pwa-12-check --env-file $archivoPrivado up --build -d --wait
+docker compose -p decilo-pwa-12-check --env-file $archivoPrivado ps
+docker compose -p decilo-pwa-12-check --env-file $archivoPrivado stop
+```
+
+Build y arranque correctos; API y PostgreSQL saludables. Antes de detenerlo se
+verificaron por localhost:58082 HTML y manifest 200, cinco PNG 200 y bytes iguales
+a sus fuentes, MIME text/html, application/manifest+json e image/png según recurso,
+Cache-Control no-cache, ETag/If-None-Match 304, ícono y manifest inexistentes 404,
+`/api/health` con status/database ok, polling Engine.IO 200 y upgrade WebSocket 101.
+Edge headless abrió login y ayuda con cero workers y entradas Cache Storage.
+No se crearon cuentas ni se realizaron escrituras de prueba en la base original.
+
+Se detuvo **solo el proyecto de prueba** y se conservaron sus contenedores y
+volumen, además del archivo privado temporal para reutilizar sus credenciales.
+Antes y después, los contenedores originales mantuvieron IDs, horas de arranque
+y montajes idénticos. No se ejecutó down, eliminación de volúmenes ni despliegue.
+
+Esta etapa solo agrega evidencia documental: conserva los resultados anteriores
+de 73 pruebas Node y 32 Playwright mediante npm run test:frontend, sin afirmar que
+se ejecutaron nuevamente. OpenSpec estricto y diff se validan con esta actualización.
