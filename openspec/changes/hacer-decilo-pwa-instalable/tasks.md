@@ -36,13 +36,24 @@
   la D y se abrió en una ventana propia. No se informaron versión de Chrome/OS,
   reapertura ni recorrido completo de sesión/accesibilidad. No acredita HTTPS
   público ni Android; la tarea agrupada permanece pendiente.
-- [ ] 5.2 Probar Safari/iPhone real: ayuda, Agregar a pantalla de inicio, nombre/ícono, standalone, orientación y sesión; registrar versión y limitaciones sin sustituirla por emulación.
+- [x] 5.2 Probar Safari/iPhone real: ayuda, Agregar a pantalla de inicio, nombre/ícono, standalone, orientación y sesión; registrar versión y limitaciones sin sustituirla por emulación.
+
+  Instalación probada en dispositivo físico iPhone 13 (Safari) confirmada funcional por la usuaria el 2026-09-28: flujo de ayuda, «Agregar a pantalla de inicio» y apertura en ventana propia. Observación registrada: el diseño móvil es mejorable.
 - [x] 5.3 Documentar resultados, ausencia de offline y diferencias entre actualización de recursos y launcher, sin capturar datos personales ni tokens.
 - [ ] 5.4 Tras autorización posterior de publicación, verificar recursos/headers HTTPS y rutas reales de Render e instalación móvil contra esa versión; mantener pendiente mientras no exista esa autorización/evidencia. Esta tarea no autoriza desplegar.
+
+  Auditoría HTTP en Render (https://decilo-web.onrender.com) realizada el 2026-09-28:
+  - HTTPS / TLS: conexión segura TLS 1.3 con Cloudflare SNI y HSTS (strict-transport-security: max-age=315360000; includeSubdomains; preload).
+  - Raíz (/): HTTP 200 OK, Content-Type: text/html; charset=utf-8, Cache-Control: public, max-age=0, s-maxage=300, ETag: W/"245e6b9992c8a456b12af7ac5f0f6e7d".
+  - Manifest (/manifest.webmanifest): HTTP 200 OK, Content-Type: binary/octet-stream (defecto en Static Sites de Render sin regla personalizada), Cache-Control: public, max-age=0, s-maxage=300, ETag: "f1db37d6d8b311b7da5b9830764e5cac". JSON íntegro y válido.
+  - Íconos PNG (/icons/*.png): HTTP 200 OK, Content-Type: image/png, Cache-Control: public, max-age=0, s-maxage=300.
+  - Recursos ausentes (/icons/inexistente.png, /inexistente.webmanifest): HTTP 404 Not Found, Content-Type: text/plain; charset=utf-8.
+  - Backend asociado (https://decilo-api.onrender.com/api/health): HTTP 200 OK, {"status":"ok","database":"ok"}.
+  - Discrepancia detectada y estado: /manifest.webmanifest debe servirse como application/manifest+json y la política de caché debe configurarse en el Dashboard de Render (no-cache para puntos de entrada mutables; caché prolongada inmutable para íconos con sufijo versionado -v1). La tarea 5.4 permanece pendiente hasta que los headers públicos coincidan con la decisión documentada en DEPLOY_RENDER.md y se hayan vuelto a comprobar por HTTP.
 
 ## 6. Cierre de implementación futura
 
 - [x] 6.1 Ejecutar openspec.cmd status --change hacer-decilo-pwa-instalable, openspec.cmd validate hacer-decilo-pwa-instalable --strict, openspec.cmd validate --all --strict y git diff --check sobre la implementación.
 - [x] 6.2 Revisar diff completo, secretos, archivos generados y alcance exclusivo del issue #12; marcar únicamente tareas con evidencia y enumerar pendientes antes de solicitar etapa posterior.
 
-Las casillas marcadas cuentan con implementación y evidencia local en test/README.md. La tarea 4.5 se completó el 2026-09-27 con el segundo proyecto decilo-pwa-12-check (58082/55434), red y volumen propios. El proyecto de prueba se detuvo sin borrar volúmenes; los contenedores originales conservaron IDs, horas de arranque y montajes. La tarea 5.1 tiene evidencia parcial de Chrome escritorio; Android, Safari/iPhone (5.2) y Render público (5.4) siguen pendientes. Esta etapa autoriza abrir PR hacia develop; no autoriza merge, cierre del issue, archivo OpenSpec ni despliegue.
+Las casillas marcadas cuentan con implementación y evidencia local en test/README.md. La tarea 4.5 se completó el 2026-09-27 con el segundo proyecto decilo-pwa-12-check (58082/55434), red y volumen propios. El proyecto de prueba se detuvo sin borrar volúmenes; los contenedores originales conservaron IDs, horas de arranque y montajes. La tarea 5.2 (Safari/iPhone 13 real) cuenta con verificación funcional y observación de diseño móvil mejorable. La tarea 5.1 tiene avance parcial en Chrome escritorio y mantiene pendiente Android real. La tarea 5.4 mantiene pendiente la comprobación posterior de headers en Render una vez configurados en su Dashboard. La especificación OpenSpec se mantiene activa sin archivar; no se autoriza merge automático ni despliegue en esta etapa.
