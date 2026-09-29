@@ -281,3 +281,18 @@ y montajes idénticos. No se ejecutó down, eliminación de volúmenes ni despli
 Esta etapa solo agrega evidencia documental: conserva los resultados anteriores
 de 73 pruebas Node y 32 Playwright mediante npm run test:frontend, sin afirmar que
 se ejecutaron nuevamente. OpenSpec estricto y diff se validan con esta actualización.
+
+### Auditoría pública en Render e instalación en iPhone 13 — 2026-09-28
+
+Se realizó una auditoría de entrega HTTP mediante solicitudes contra el Static Site `https://decilo-web.onrender.com`:
+- **Conexión HTTPS / TLS**: negociación TLS 1.3 con Cloudflare SNI y política HSTS (`strict-transport-security: max-age=315360000; includeSubdomains; preload`).
+- **Raíz (`/`)**: HTTP 200 OK, `Content-Type: text/html; charset=utf-8`, `Cache-Control: public, max-age=0, s-maxage=300`, `ETag: W/"245e6b9992c8a456b12af7ac5f0f6e7d"`.
+- **Manifest (`/manifest.webmanifest`)**: HTTP 200 OK, `Content-Type: binary/octet-stream` (predeterminado de Static Site en Render sin reglas de headers adicionales), `Cache-Control: public, max-age=0, s-maxage=300`, `ETag: "f1db37d6d8b311b7da5b9830764e5cac"`. Parseo JSON válido con identidad DECILO, modo `standalone`, colores institucionales y referencias correctas a íconos.
+- **Íconos PNG**: `/icons/favicon-v1.png`, `/icons/apple-touch-icon-v1.png`, `/icons/decilo-192-v1.png`, `/icons/decilo-512-v1.png` y `/icons/decilo-maskable-512-v1.png` devolvieron todos HTTP 200 OK, `Content-Type: image/png`, `Cache-Control: public, max-age=0, s-maxage=300` y ETags individuales.
+- **Recursos inexistentes**: `/icons/inexistente.png` y `/inexistente.webmanifest` respondieron HTTP 404 Not Found con `Content-Type: text/plain; charset=utf-8`, confirmando que no existe rewrite indebido con código 200 para recursos estáticos ausentes.
+- **API Web Service (`https://decilo-api.onrender.com/api/health`)**: HTTP 200 OK con payload `{"status":"ok","database":"ok"}`.
+- **Instalación móvil en dispositivo real (Tarea 5.2 - Completa)**: la usuaria comprobó la instalación de DECILO en un dispositivo físico iPhone 13 a través de Safari (flujo de ayuda, «Agregar a pantalla de inicio» y apertura en ventana propia funcional). Se registró la observación de que el diseño móvil es mejorable.
+- **Política de caché definida y justificada**:
+  - Recursos mutables de entrada (`/`, `/index.html`, `/manifest.webmanifest`): exigen revalidación `no-cache` para descubrimiento oportuno de nuevas versiones, con `Content-Type: application/manifest+json` forzado para el manifest.
+  - Íconos versionados (`/icons/*-v*.png`): al tener sufijos de versión inmutables (`-v1.png`), se define `Cache-Control: public, max-age=31536000, immutable` para eliminar peticiones redundantes y acelerar la carga en móviles sin riesgo de obsolescencia.
+- **Estado de tareas pendientes**: la tarea 5.1 permanece pendiente hasta contar con pruebas en dispositivo físico Android. La tarea 5.4 permanece pendiente hasta que los headers sean configurados en el Dashboard de Render y se confirme su efectividad por HTTP. La especificación OpenSpec `hacer-decilo-pwa-instalable` se mantiene activa y sin archivar.
