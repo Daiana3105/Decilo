@@ -1,3 +1,5 @@
+const { createNotificationRepository } = require("./repositories/notification-repository");
+const { createNotificationStateRepository } = require("./repositories/notification-state-repository");
 const { randomUUID } = require("node:crypto");
 
 class NotificationError extends Error {
@@ -24,14 +26,7 @@ function publicNotification(row) {
     createdAt: row.created_at, readAt: row.read_at };
 }
 
-async function summary(client, userId) {
-  const { rows } = await client.query(`SELECT
-    COALESCE((SELECT revision FROM notification_state WHERE user_id = $1), 0)::text AS revision,
-    (SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND read_at IS NULL)::text AS count`, [userId]);
-  return { unreadCount: Number(rows[0].count), revision: rows[0].revision };
-}
-
-function createNotificationService(database) {
+function createNotificationService(database, { notificationRepository = createNotificationRepository, stateRepository = createNotificationStateRepository } = {}) {
   async function transaction(userId, write, operation) {
     const client = await database.connect();
     try {
@@ -47,7 +42,7 @@ function createNotificationService(database) {
       if (write && result.changed) {
         await client.query("UPDATE notification_state SET revision = revision + 1 WHERE user_id = $1", [userId]);
       }
-      const state = await summary(client, userId);
+      const state = await stateRepository(client).summary(userId);
       await client.query("COMMIT");
       return { ...result, ...state };
     } catch (error) {
@@ -68,9 +63,7 @@ function createNotificationService(database) {
     async list(userId, query = {}) {
       const { limit, before } = pagination(query);
       return transaction(userId, false, async (client) => {
-        const { rows } = await client.query(`SELECT * FROM notifications
-          WHERE user_id = $1 AND ($2::bigint IS NULL OR id < $2)
-          ORDER BY id DESC LIMIT $3`, [userId, before, limit + 1]);
+        const { rows } = await notificationRepository(client).listBefore(userId, { before, limit: limit + 1 });
         const page = rows.slice(0, limit);
         return { notifications: page.map(publicNotification), nextCursor: rows.length > limit ? page.at(-1).id : null };
       });
@@ -79,16 +72,16 @@ function createNotificationService(database) {
     async markRead(userId, id) {
       validId(id);
       return transaction(userId, true, async (client) => {
-        const result = await client.query(`UPDATE notifications SET read_at = CURRENT_TIMESTAMP
-          WHERE user_id = $1 AND id = $2 AND read_at IS NULL RETURNING *`, [userId, id]);
-        const row = result.rows[0] || (await client.query("SELECT * FROM notifications WHERE user_id = $1 AND id = $2", [userId, id])).rows[0];
+        const repository = notificationRepository(client);
+        const result = await repository.markRead(userId, id);
+        const row = result.rows[0] || await repository.findOwnedById(userId, id);
         if (!row) throw new NotificationError(404, "NOTIFICATION_NOT_FOUND", "No se encontró la notificación.");
         return { notification: publicNotification(row), changed: result.rowCount > 0 };
       });
     },
     async markAllRead(userId) {
       return transaction(userId, true, async (client) => {
-        const result = await client.query("UPDATE notifications SET read_at = CURRENT_TIMESTAMP WHERE user_id = $1 AND read_at IS NULL", [userId]);
+        const result = await notificationRepository(client).markAllRead(userId);
         return { updatedCount: result.rowCount, changed: result.rowCount > 0 };
       });
     }

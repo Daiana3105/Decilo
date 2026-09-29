@@ -9,7 +9,7 @@ Seguir la migración incremental de design.md, verificando cada paso. No superpo
 
 - [x] 2.1 Crear repositorio de usuarios con findById, findByEmail e insert, SQL parametrizado y ejecutor inyectado; mantener bcrypt/JWT/DTO en lógica existente.
 - [x] 2.2 Crear repositorios de notificaciones y estado con métodos del diseño, filtros por usuario, rowCount, bloqueos, resumen y BIGINT sin pérdida de precisión.
-- [ ] 2.3 Extraer SELECT 1 a adaptador de salud; migrar consultas de auth.js y server.js conservando respuestas y dobles de prueba existentes.
+- [x] 2.3 Extraer SELECT 1 a adaptador de salud; migrar consultas de auth.js y server.js conservando respuestas y dobles de prueba existentes.
 - [x] 2.4 Probar repositorios con ejecutor inyectado, parámetros, aislamiento de usuario y ausencia de manejo propio de conexiones/transacciones.
 
 ## 3. Unit of Work
@@ -56,3 +56,12 @@ Etapa 1 autorizada: infraestructura base y pruebas, sin migrar consumidores. Sol
 - Nueva ejecución: 18 pruebas unitarias aprobadas; npm.cmd test con PostgreSQL efímero aislado, 92 aprobadas (73 existentes más 19 nuevas), 0 fallidas y sin rechazos no manejados reportados por el runner.
 - Se confirmaron parámetros SQL, ejecutor inyectado, contratos de filas/rowCount/BIGINT, responsabilidad transaccional exclusiva del UoW y protecciones de isolatedDatabase intactas. No se marcaron tareas adicionales ni tareas dependientes de migrar consumidores.
 - OpenSpec estricto del cambio y global válidos (8 aprobados); git diff --check sin errores.
+
+### Etapa 2: consumidores de repositorios
+
+- Salud y usuarios migrados mediante inyección explícita; firmas anteriores siguen funcionando con repositorios construidos sobre el ejecutor recibido. SQL de búsqueda por ID/email e inserción eliminado de auth.js/server.js.
+- listBefore, findOwnedById, markRead, markAllRead y summary delegados a repositorios ligados al cliente del helper transaccional existente. Summary es compartido por ese helper: su consulta se delega sin cambiar orden, conexión ni resultado, también cuando el helper atiende createLogin.
+- La inserción secundaria createLogin, sus bloqueos/escrituras de estado, BEGIN/COMMIT/ROLLBACK/release y emisión no se migraron. Unit of Work permanece intacto. 4.1 y 4.2 siguen pendientes porque exigen integración con UoW, no solo extracción de consultas.
+- Dockerfile.api copia repositories/ para resolver los nuevos imports; 5.1 sigue parcial, sin incluir UoW ni afirmar prueba de arranque de imagen.
+- Pruebas dirigidas: node --test test/repository-consumers.test.js test/repositories.test.js, 4 aprobadas. Comprueban inyección, normalización y hash, salud/registro/login/me, cliente transaccional compartido, paginación, fallback de lectura, revisiones string y resumen.
+- Suite completa posterior: npm.cmd test, 94 aprobadas, 0 fallidas, base efímera aislada; conserva regresiones de autorización, 404 indistinguibles, concurrencia, login secundario y Socket.IO. OpenSpec estricto del cambio válido y global 8 aprobados; git diff --check sin errores. No se ejecutaron build Docker ni Playwright en esta etapa.

@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { publicUser } = require("./db");
+const { createUserRepository } = require("./repositories/user-repository");
 
 const ROLES = new Set(["profesional", "paciente", "familiar"]);
 const PASSWORD_MIN_LENGTH = 8;
@@ -32,7 +33,7 @@ function readBearerToken(header = "") {
 
 class AuthenticationError extends Error {}
 
-async function authenticateToken(database, config, token) {
+async function authenticateToken(database, config, token, users = createUserRepository(database)) {
   let claims;
   try {
     if (typeof token !== "string") throw new Error();
@@ -40,18 +41,18 @@ async function authenticateToken(database, config, token) {
     if (typeof claims.sub !== "string" || !/^[1-9][0-9]{0,9}$/.test(claims.sub) ||
         Number(claims.sub) > 2147483647 || !Number.isFinite(claims.exp) || claims.exp * 1000 <= Date.now()) throw new Error();
   } catch (_) { throw new AuthenticationError("AUTH_INVALID"); }
-  const result = await database.query("SELECT * FROM users WHERE id = $1", [Number(claims.sub)]);
-  if (!result.rows[0]) throw new AuthenticationError("AUTH_INVALID");
-  return { user: result.rows[0], claims };
+  const user = await users.findById(Number(claims.sub));
+  if (!user) throw new AuthenticationError("AUTH_INVALID");
+  return { user, claims };
 }
 
-function authMiddleware(database, config) {
+function authMiddleware(database, config, users = createUserRepository(database)) {
   return async (request, response, next) => {
     const token = readBearerToken(request.headers.authorization);
     if (!token) return response.status(401).json({ error: "AUTH_REQUIRED", message: "Necesitás iniciar sesión." });
 
     try {
-      const { user } = await authenticateToken(database, config, token);
+      const { user } = await authenticateToken(database, config, token, users);
       request.user = user;
       next();
     } catch (error) {
@@ -61,14 +62,9 @@ function authMiddleware(database, config) {
   };
 }
 
-async function registerUser(database, values) {
+async function registerUser(database, values, users = createUserRepository(database)) {
   const passwordHash = await bcrypt.hash(values.password, 12);
-  const result = await database.query(`
-    INSERT INTO users (nombre, email, password_hash, rol)
-    VALUES ($1, $2, $3, $4)
-    RETURNING *
-  `, [values.nombre, values.email, passwordHash, values.rol]);
-  return result.rows[0];
+  return users.insert({ nombre: values.nombre, email: values.email, passwordHash, rol: values.rol });
 }
 
 async function verifyPassword(password, passwordHash) {
