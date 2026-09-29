@@ -2,22 +2,22 @@
 
 Seguir la migración incremental de design.md, verificando cada paso. No superponer el helper transaccional anterior y el UoW en una operación; retirar el helper al terminar sus consumidores. Ninguna tarea autoriza commit automático, merge, despliegue ni archivo OpenSpec.
 
-- [ ] 1.1 Registrar ejecución base de las 73 pruebas con npm.cmd test mediante PostgreSQL temporal; investigar diferencias sin eliminar cobertura.
+- [x] 1.1 Registrar ejecución base de las 73 pruebas con npm.cmd test mediante PostgreSQL temporal; investigar diferencias sin eliminar cobertura.
 - [ ] 1.2 Fijar matriz de contratos y consultas de auth, salud, notificaciones y Socket.IO a partir del inventario de design.md; conservar firmas usadas por las pruebas.
 
 ## 2. Repository
 
-- [ ] 2.1 Crear repositorio de usuarios con findById, findByEmail e insert, SQL parametrizado y ejecutor inyectado; mantener bcrypt/JWT/DTO en lógica existente.
-- [ ] 2.2 Crear repositorios de notificaciones y estado con métodos del diseño, filtros por usuario, rowCount, bloqueos, resumen y BIGINT sin pérdida de precisión.
+- [x] 2.1 Crear repositorio de usuarios con findById, findByEmail e insert, SQL parametrizado y ejecutor inyectado; mantener bcrypt/JWT/DTO en lógica existente.
+- [x] 2.2 Crear repositorios de notificaciones y estado con métodos del diseño, filtros por usuario, rowCount, bloqueos, resumen y BIGINT sin pérdida de precisión.
 - [ ] 2.3 Extraer SELECT 1 a adaptador de salud; migrar consultas de auth.js y server.js conservando respuestas y dobles de prueba existentes.
-- [ ] 2.4 Probar repositorios con ejecutor inyectado, parámetros, aislamiento de usuario y ausencia de manejo propio de conexiones/transacciones.
+- [x] 2.4 Probar repositorios con ejecutor inyectado, parámetros, aislamiento de usuario y ausencia de manejo propio de conexiones/transacciones.
 
 ## 3. Unit of Work
 
-- [ ] 3.1 Implementar run con adquisición única, BEGIN según modo, configuración local y callback esperado antes de COMMIT en el mismo cliente.
-- [ ] 3.2 Implementar error original, intento de ROLLBACK y release único en finally; descartar cliente inseguro sin cerrar el pool ni reintentar automáticamente.
-- [ ] 3.3 Probar orden y cliente único en commit, fallo connect, BEGIN, SET LOCAL, callback, COMMIT y ROLLBACK; verificar release normal/descarte exactamente una vez.
-- [ ] 3.4 Probar lecturas REPEATABLE READ READ ONLY, límites locales y aislamiento entre unidades concurrentes sin pool.query dentro de la unidad.
+- [x] 3.1 Implementar run con adquisición única, BEGIN según modo, configuración local y callback esperado antes de COMMIT en el mismo cliente.
+- [x] 3.2 Implementar error original, intento de ROLLBACK y release único en finally; descartar cliente inseguro sin cerrar el pool ni reintentar automáticamente.
+- [x] 3.3 Probar orden y cliente único en commit, fallo connect, BEGIN, SET LOCAL, callback, COMMIT y ROLLBACK; verificar release normal/descarte exactamente una vez.
+- [x] 3.4 Probar lecturas REPEATABLE READ READ ONLY, límites locales y aislamiento entre unidades concurrentes sin pool.query dentro de la unidad.
 
 ## 4. Integración transaccional
 
@@ -36,4 +36,23 @@ Seguir la migración incremental de design.md, verificando cada paso. No superpo
 - [ ] 5.5 Ejecutar openspec.cmd status --change implementar-repository-unit-of-work, validación estricta del cambio y global, y git diff --check.
 - [ ] 5.6 Revisar diff, ausencia de secretos/generados y alcance exclusivo #17; comprobar que contratos, esquema y cambio PWA permanecen sin alteraciones ajenas.
 
-Todas las tareas anteriores corresponden a implementación futura y permanecen pendientes. La creación y validación de esta planificación no demuestra su ejecución. No se autoriza implementar, hacer commit, desplegar ni archivar en esta etapa. Issue: https://github.com/Daiana3105/Decilo/issues/17.
+Etapa 1 autorizada: infraestructura base y pruebas, sin migrar consumidores. Solo las casillas marcadas cuentan con evidencia de esta etapa; las demás permanecen pendientes. No se autoriza commit, push, merge, despliegue ni archivo OpenSpec. Issue: https://github.com/Daiana3105/Decilo/issues/17.
+
+
+### Evidencia de infraestructura base
+
+- Base antes de agregar pruebas: npm.cmd test, 73 aprobadas.
+- Nuevas pruebas unitarias: node --test test/unit-of-work.test.js test/repositories.test.js, 16 aprobadas. El primer intento fue bloqueado por spawn EPERM del sandbox; la ejecución autorizada terminó correctamente.
+- Suite completa: npm.cmd test, 90 aprobadas (73 existentes y 17 nuevas), 0 fallidas, PostgreSQL efímero aislado. Incluye integración de repositorios/UoW sin migrar el servicio: commit, duplicado, rollback tras inserción y adquisición posterior con pool max 1.
+- 2.3 parcial: creado repositories/database-health.js; auth.js y server.js no migrados.
+- 4.1–4.5 siguen pendientes: la prueba base no acredita integración de createLogin, emisión Socket.IO ni todos los escenarios de estado nuevo/preexistente.
+- 5.3 conserva su casilla pendiente por corresponder a la implementación completa; esta etapa sí ejecutó las 90 pruebas disponibles. No se ejecutó Playwright ni se modificó Dockerfile.api.
+- El UoW conserva el error original si también falla rollback o release. Si solo falla release después de COMMIT, rechaza con ese error sin intentar revertir un commit confirmado ni liberar otra vez.
+- OpenSpec estricto: cambio válido y global 8 aprobados, 0 fallidos. git diff --check correcto; avisos de conversión LF/CRLF sin errores.
+
+### Revisión crítica de la etapa 1
+
+- No se detectaron defectos funcionales en UoW ni repositorios; no se modificaron esos módulos ni consumidores. Se añadieron dos pruebas para comprobar BEGIN pendiente antes del callback y error original de COMMIT cuando también rechazan ROLLBACK y release.
+- Nueva ejecución: 18 pruebas unitarias aprobadas; npm.cmd test con PostgreSQL efímero aislado, 92 aprobadas (73 existentes más 19 nuevas), 0 fallidas y sin rechazos no manejados reportados por el runner.
+- Se confirmaron parámetros SQL, ejecutor inyectado, contratos de filas/rowCount/BIGINT, responsabilidad transaccional exclusiva del UoW y protecciones de isolatedDatabase intactas. No se marcaron tareas adicionales ni tareas dependientes de migrar consumidores.
+- OpenSpec estricto del cambio y global válidos (8 aprobados); git diff --check sin errores.
