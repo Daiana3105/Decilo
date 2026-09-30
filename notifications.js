@@ -1,6 +1,7 @@
 const { createNotificationRepository } = require("./repositories/notification-repository");
 const { createNotificationStateRepository } = require("./repositories/notification-state-repository");
 const { randomUUID } = require("node:crypto");
+const { createUnitOfWork } = require("./unit-of-work");
 
 class NotificationError extends Error {
   constructor(status, code, message) { super(message); this.status = status; this.code = code; }
@@ -27,6 +28,7 @@ function publicNotification(row) {
 }
 
 function createNotificationService(database, { notificationRepository = createNotificationRepository, stateRepository = createNotificationStateRepository } = {}) {
+  const unitOfWork = createUnitOfWork(database);
   async function transaction(userId, write, operation) {
     const client = await database.connect();
     try {
@@ -53,11 +55,17 @@ function createNotificationService(database, { notificationRepository = createNo
 
   return {
     async createLogin(userId, eventId = randomUUID()) {
-      return transaction(userId, true, async (client) => {
-        const result = await client.query(`INSERT INTO notifications (user_id, event_id, type, title, body)
-          VALUES ($1, $2, 'session.login', 'Se inició sesión en tu cuenta', 'Se aceptó un nuevo inicio de sesión en DECILO.')
-          ON CONFLICT (user_id, event_id) DO NOTHING RETURNING *`, [userId, eventId]);
-        return { changed: result.rowCount > 0, notification: result.rows[0] ? publicNotification(result.rows[0]) : null };
+      return unitOfWork.run(async (client) => {
+        const notifications = notificationRepository(client);
+        const state = stateRepository(client);
+        await state.ensure(userId);
+        await state.lock(userId);
+        const result = await notifications.insert({ userId, eventId, type: "session.login",
+          title: "Se inició sesión en tu cuenta", body: "Se aceptó un nuevo inicio de sesión en DECILO." });
+        const changed = result.rowCount > 0;
+        if (changed) await state.increment(userId);
+        return { changed, notification: result.rows[0] ? publicNotification(result.rows[0]) : null,
+          ...await state.summary(userId) };
       });
     },
     async list(userId, query = {}) {

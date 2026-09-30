@@ -21,11 +21,11 @@ Seguir la migración incremental de design.md, verificando cada paso. No superpo
 
 ## 4. Integración transaccional
 
-- [ ] 4.1 Migrar createLogin al UoW: asegurar/bloquear estado, insertar aviso, incrementar solo ante cambio y resumir antes de confirmar.
+- [x] 4.1 Migrar createLogin al UoW: asegurar/bloquear estado, insertar aviso, incrementar solo ante cambio y resumir antes de confirmar.
 - [ ] 4.2 Migrar list, unreadCount, markRead y markAllRead preservando snapshots, concurrencia, fechas, idempotencia y errores existentes.
-- [ ] 4.3 Mantener login no bloqueante, pool secundario acotado y publicación fuera del UoW; usar una barrera de COMMIT pendiente para verificar cero llamadas a publish antes de confirmar y ninguna ante rechazo; comprobar emisión fallida sin perder datos. Conservar notifications:ready independiente.
-- [ ] 4.4 Agregar integración real de commit visible desde otra conexión y rollback en incremento de revisión con estado nuevo y previo, sin exigir secuencias consecutivas.
-- [ ] 4.5 Comprobar nueva adquisición tras éxito/fallo con pool max 1 y timeout; conservar pruebas concurrentes, deduplicación y regresiones actuales de rollback.
+- [x] 4.3 Mantener login no bloqueante, pool secundario acotado y publicación fuera del UoW; usar una barrera de COMMIT pendiente para verificar cero llamadas a publish antes de confirmar y ninguna ante rechazo; comprobar emisión fallida sin perder datos. Conservar notifications:ready independiente.
+- [x] 4.4 Agregar integración real de commit visible desde otra conexión y rollback en incremento de revisión con estado nuevo y previo, sin exigir secuencias consecutivas.
+- [x] 4.5 Comprobar nueva adquisición tras éxito/fallo con pool max 1 y timeout; conservar pruebas concurrentes, deduplicación y regresiones actuales de rollback.
 
 ## 5. Empaquetado y validación de la implementación futura
 
@@ -65,3 +65,13 @@ Etapa 1 autorizada: infraestructura base y pruebas, sin migrar consumidores. Sol
 - Dockerfile.api copia repositories/ para resolver los nuevos imports; 5.1 sigue parcial, sin incluir UoW ni afirmar prueba de arranque de imagen.
 - Pruebas dirigidas: node --test test/repository-consumers.test.js test/repositories.test.js, 4 aprobadas. Comprueban inyección, normalización y hash, salud/registro/login/me, cliente transaccional compartido, paginación, fallback de lectura, revisiones string y resumen.
 - Suite completa posterior: npm.cmd test, 94 aprobadas, 0 fallidas, base efímera aislada; conserva regresiones de autorización, 404 indistinguibles, concurrencia, login secundario y Socket.IO. OpenSpec estricto del cambio válido y global 8 aprobados; git diff --check sin errores. No se ejecutaron build Docker ni Playwright en esta etapa.
+
+### Etapa 3: notificación secundaria de login — 2026-09-30
+
+- createLogin usa UoW; ambos repositorios se construyen con su único cliente. Orden: BEGIN, límites locales, ensure, lock, insert, incremento condicional, summary, COMMIT, release y publicación posterior. Conserva el DTO anterior sin exponer cliente ni filas privadas.
+- El helper transaccional manual permanece exclusivamente para operaciones REST todavía no migradas al UoW (4.2 pendiente). No se duplican transacciones en createLogin. notifications:ready, login-notifications.js y realtime.js no se modificaron.
+- test/login-uow.test.js verifica misma conexión, COMMIT bloqueado sin publicación, publicación posterior, rechazo sin emisión, release único y logs saneados. Dirigidas junto con login-notifications y unit-of-work: 21 aprobadas.
+- Integración PostgreSQL: createLogin revierte aviso y revisión con estado nuevo o previo, conserva datos anteriores, deduplica eventos y permite adquirir nuevamente con pool max 1. La suite conserva pruebas de login no bloqueante, errores secundarios que no invalidan JWT, límites de trabajo, emisión fallida, reconexión y recuperación REST.
+- npm.cmd test: 97 aprobadas, 0 fallidas, PostgreSQL efímero aislado. OpenSpec estricto del cambio válido; global 8 aprobados. git diff --check sin errores.
+- Dockerfile.api incluye unit-of-work.js. 5.1 permanece parcial porque no se construyó ni arrancó una imagen en esta etapa. Siguen pendientes 1.2, 4.2 y las tareas finales 5.1–5.6; las validaciones aquí registradas corresponden a esta etapa, no al cierre de toda la implementación.
+- No se modificó la PWA ni se hizo commit, push, merge, despliegue o archivo OpenSpec.

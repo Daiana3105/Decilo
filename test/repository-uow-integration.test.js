@@ -8,6 +8,41 @@ const { createUserRepository } = require("../repositories/user-repository");
 const { createNotificationRepository } = require("../repositories/notification-repository");
 const { createNotificationStateRepository } = require("../repositories/notification-state-repository");
 const { createDatabaseHealth } = require("../repositories/database-health");
+const { createNotificationService } = require("../notifications");
+
+test("createLogin rolls back notice and revision for new and existing state and releases its single client", async () => {
+  const fixture = await isolatedDatabase();
+  const pool = new Pool({ ...fixture.databaseConfig, max: 1, connectionTimeoutMillis: 1000 });
+  const service = createNotificationService(pool);
+  try {
+    const user = await createUserRepository(fixture.database).insert({ nombre: "Login", email: "login-uow@example.test", passwordHash: "synthetic", rol: "paciente" });
+    const observer = createNotificationStateRepository(fixture.database);
+    for (const existing of [false, true]) {
+      if (existing) await service.createLogin(user.id);
+      const before = await observer.summary(user.id);
+      await fixture.database.query(`CREATE FUNCTION reject_login_revision() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN RAISE EXCEPTION 'forced revision failure'; END $$;
+        CREATE TRIGGER reject_login_revision BEFORE UPDATE ON notification_state
+        FOR EACH ROW EXECUTE FUNCTION reject_login_revision()`);
+      try {
+        await assert.rejects(service.createLogin(user.id), { code: "P0001" });
+        assert.deepEqual(await observer.summary(user.id), before);
+        const notices = await createNotificationRepository(fixture.database).listBefore(user.id, { limit: 20 });
+        assert.equal(notices.rowCount, existing ? 1 : 0);
+        assert.equal((await fixture.database.query("SELECT * FROM notification_state WHERE user_id = $1", [user.id])).rowCount, existing ? 1 : 0);
+        assert.equal((await pool.query("SELECT 1 AS ok")).rows[0].ok, 1);
+      } finally {
+        await fixture.database.query("DROP TRIGGER reject_login_revision ON notification_state; DROP FUNCTION reject_login_revision()");
+      }
+    }
+    const event = randomUUID();
+    assert.equal((await service.createLogin(user.id, event)).changed, true);
+    assert.equal((await service.createLogin(user.id, event)).changed, false);
+    assert.deepEqual(await observer.summary(user.id), { unreadCount: 2, revision: "2" });
+  } finally {
+    try { await pool.end(); } finally { await fixture.close(); }
+  }
+});
 
 test("base repositories commit and roll back together in isolated PostgreSQL without leaking a client", async () => {
   const fixture = await isolatedDatabase();
