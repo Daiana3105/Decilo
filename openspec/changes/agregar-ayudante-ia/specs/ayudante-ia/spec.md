@@ -1,0 +1,79 @@
+## ADDED Requirements
+
+### Requirement: Ayuda acotada según audiencia
+El ayudante MUST servir únicamente para explicar DECILO y ayudar a expresar necesidades; MUST usar lenguaje sencillo, hasta tres frases y 400 caracteres para pacientes y hasta 700 caracteres para familiares. MUST rechazar diagnóstico, prescripción y modificación de tratamientos sin ofrecer instrucciones clínicas.
+
+#### Scenario: Necesidad cotidiana
+- **WHEN** un paciente pide ayuda para expresar que necesita descansar
+- **THEN** recibe una propuesta breve de frase que no se envía ni guarda automáticamente
+
+#### Scenario: Acompañamiento familiar
+- **WHEN** un familiar pregunta cómo usar una función disponible
+- **THEN** recibe ayuda basada en documentación pública sin consultar datos del paciente
+
+#### Scenario: Solicitud clínica
+- **WHEN** se solicita diagnóstico, medicación o cambio de tratamiento
+- **THEN** se muestra una respuesta de límite sin recomendación clínica personalizada
+
+### Requirement: Autorización y backend exclusivo
+El sistema MUST verificar sesión y usuario actual, autorizar solo paciente/familiar y llamar al proveedor únicamente desde backend. MUST mantener claves fuera de frontend, repositorio y logs, preservando contratos existentes.
+
+#### Scenario: Usuario no autorizado
+- **WHEN** falta sesión válida o el usuario es profesional
+- **THEN** responde 401 o 403 respectivamente y no llama al proveedor ni consume presupuesto
+
+#### Scenario: Manipulación de identidad
+- **WHEN** el cliente incluye rol, usuario, historial o URL de proveedor en el cuerpo
+- **THEN** se rechaza la entrada y no se usa esa información para autorización o envío
+
+### Requirement: Minimización y ausencia de acciones
+El sistema MUST enviar solo mensaje explícito, audiencia e instrucciones/ayuda públicas; MUST NOT adjuntar automáticamente JWT, identidad, historias, datos de otros usuarios o información autenticada. MUST NOT habilitar herramientas, ejecutar instrucciones del modelo ni modificar datos del paciente. MUST tratar respuesta como texto inerte y no persistir conversaciones ni cachearlas.
+
+#### Scenario: Envío explícito
+- **WHEN** la persona envía su mensaje tras ver el aviso de privacidad
+- **THEN** el payload externo contiene únicamente los campos permitidos y ningún dato tomado de almacenamiento o sesión salvo categoría de audiencia
+
+#### Scenario: Respuesta maliciosa
+- **WHEN** el proveedor devuelve HTML o pide cambiar datos
+- **THEN** no se ejecuta código, navegación ni escritura y la salida inválida se sustituye por ayuda local segura
+
+#### Scenario: Cambio de sesión
+- **WHEN** hay logout o cambio de cuenta durante una respuesta pendiente
+- **THEN** se cancela la petición y se borran mensajes en memoria sin mostrar respuestas de la sesión anterior
+
+### Requirement: Límites y presupuesto previo
+El sistema MUST limitar cuerpo a 8 KiB, mensaje a 800 puntos de código, salida a 256 tokens, concurrencia a una solicitud por usuario y dos globales, uso a cinco solicitudes por minuto y treinta por día UTC y duración a 15 segundos. MUST reservar cuota y costo máximo atómicamente antes de llamar, sin reintentos automáticos y conservando reservas inciertas ante fallo.
+
+#### Scenario: Límite alcanzado
+- **WHEN** se supera longitud, cuota o concurrencia
+- **THEN** se devuelve error acotado 400/413 o 429 según corresponda sin llamada adicional al proveedor
+
+#### Scenario: Presupuesto agotado o desconocido
+- **WHEN** no hay presupuesto/configuración válida o falla su almacenamiento
+- **THEN** no se llama al proveedor, se responde 503 y se mantiene ayuda local
+
+#### Scenario: Concurrencia y reinicio
+- **WHEN** dos solicitudes compiten por el último saldo o reinicia el proceso
+- **THEN** las reservas persistentes impiden gastar dos veces el saldo o recuperar presupuesto incierto
+
+#### Scenario: Timeout y fallo
+- **WHEN** vence el plazo o falla el proveedor
+- **THEN** se aborta la llamada cuando sea posible y se devuelve 504, 502 o 503 saneado según causa sin reintento automático ni liberar costo incierto
+
+### Requirement: Interfaz accesible y alternativa local
+La interfaz MUST ofrecer controles de al menos 48×48 px, nombres claros, teclado, foco visible y anuncios de estado; MUST mantener navegación y comunicador utilizables cuando la IA no está disponible.
+
+#### Scenario: Móvil y teclado
+- **WHEN** pacientes y familiares usan 320/768/1280 px, zoom 200% o teclado
+- **THEN** pueden enviar, cancelar y leer estados sin pérdida de foco ni desbordamientos nuevos
+
+### Requirement: Activación y pruebas sin consumo pago
+La integración real MUST permanecer desactivada hasta aprobar proveedor/modelo, tratamiento de datos, público etario y presupuesto. Las pruebas MUST usar un adaptador simulado sin claves ni solicitudes externas y MUST comprobar privacidad, autorización, errores, límites y ausencia de acciones.
+
+#### Scenario: Configuración inicial
+- **WHEN** no hay decisiones y configuración completas para uso real
+- **THEN** la función mantiene ayuda local sin llamadas externas
+
+#### Scenario: Suite automatizada
+- **WHEN** se ejecutan las pruebas del ayudante
+- **THEN** se verifican escenarios con proveedor falso y cualquier intento de inferencia externa falla la prueba
