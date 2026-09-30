@@ -244,3 +244,24 @@ En el Dashboard de Render ([dashboard.render.com](https://dashboard.render.com))
 - **Safari en iPhone 13 (Tarea 5.2 - Completa)**: Comprobada en dispositivo físico real por la usuaria el 2026-09-28; instalación operativa mediante «Agregar a pantalla de inicio» y apertura standalone. Se registró la observación de que **el diseño móvil es mejorable**.
 - **Chrome Android (Tarea 5.1 - Pendiente)**: Permanece pendiente hasta contar con pruebas en dispositivo físico Android real.
 - **Render público (Tarea 5.4 - Pendiente)**: Permanece pendiente hasta que las cabeceras anteriores sean configuradas en el Dashboard de Render y se vuelva a comprobar por HTTP que `/manifest.webmanifest` responde `application/manifest+json` y los íconos aplican la política de caché definida.
+
+### 8.6. Actualización y rollback de recursos
+
+Conservar `npm ci && npm run build:frontend` y Publish Directory `dist`. Las reglas
+de headers anteriores corresponden al Static Site, no a la API; `nginx.conf` no
+configura el servidor estático de Render. La API conserva su origen HTTPS y
+Socket.IO usa HTTPS/WSS. Ver [headers de Static Sites](https://render.com/docs/static-site-headers)
+y [reglas de Render](https://render.com/docs/redirects-rewrites).
+
+Al cambiar imágenes, incrementar el sufijo de versión en generador, manifest,
+HTML y allowlist/pruebas, manteniendo `id: /` estable. No reemplazar el contenido
+de una URL declarada immutable. `no-cache` permite guardar recursos públicos
+pero exige revalidarlos; no equivale a caché de API o datos autenticados.
+
+El sistema operativo decide cuándo actualiza el ícono instalado. Probar cerrar
+y reabrir antes de reinstalar; una reinstalación puede no conservar datos locales.
+No borrar sessionStorage/localStorage para actualizar. Un rollback debe recuperar
+juntos HTML, manifest e imágenes de la misma versión y revisar sus headers; no
+elimina accesos instalados ni datos. Comprobar por HTTPS los recursos existentes,
+404 de faltantes, ETag/Last-Modified, revalidación y ausencia de contenido mixto.
+Estas instrucciones no acreditan ejecución ni completan tareas pendientes.
