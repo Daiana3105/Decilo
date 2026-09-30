@@ -29,28 +29,17 @@ function publicNotification(row) {
 
 function createNotificationService(database, { notificationRepository = createNotificationRepository, stateRepository = createNotificationStateRepository } = {}) {
   const unitOfWork = createUnitOfWork(database);
-  async function transaction(userId, write, operation) {
-    const client = await database.connect();
-    try {
-      await client.query(write ? "BEGIN" : "BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
-      // Bounds also apply when the service is passed an externally constructed pool.
-      await client.query("SET LOCAL statement_timeout = '5s'");
-      await client.query("SET LOCAL lock_timeout = '2s'");
+  function runOperation(userId, write, operation) {
+    return unitOfWork.run(async (client) => {
+      const state = stateRepository(client);
       if (write) {
-        await client.query("INSERT INTO notification_state (user_id) VALUES ($1) ON CONFLICT DO NOTHING", [userId]);
-        await client.query("SELECT revision FROM notification_state WHERE user_id = $1 FOR UPDATE", [userId]);
+        await state.ensure(userId);
+        await state.lock(userId);
       }
       const result = await operation(client);
-      if (write && result.changed) {
-        await client.query("UPDATE notification_state SET revision = revision + 1 WHERE user_id = $1", [userId]);
-      }
-      const state = await stateRepository(client).summary(userId);
-      await client.query("COMMIT");
-      return { ...result, ...state };
-    } catch (error) {
-      await client.query("ROLLBACK").catch(() => {});
-      throw error;
-    } finally { client.release(); }
+      if (write && result.changed) await state.increment(userId);
+      return { ...result, ...await state.summary(userId) };
+    }, { readOnly: !write });
   }
 
   return {
@@ -70,16 +59,16 @@ function createNotificationService(database, { notificationRepository = createNo
     },
     async list(userId, query = {}) {
       const { limit, before } = pagination(query);
-      return transaction(userId, false, async (client) => {
+      return runOperation(userId, false, async (client) => {
         const { rows } = await notificationRepository(client).listBefore(userId, { before, limit: limit + 1 });
         const page = rows.slice(0, limit);
         return { notifications: page.map(publicNotification), nextCursor: rows.length > limit ? page.at(-1).id : null };
       });
     },
-    async unreadCount(userId) { return transaction(userId, false, async () => ({})); },
+    async unreadCount(userId) { return runOperation(userId, false, async () => ({})); },
     async markRead(userId, id) {
       validId(id);
-      return transaction(userId, true, async (client) => {
+      return runOperation(userId, true, async (client) => {
         const repository = notificationRepository(client);
         const result = await repository.markRead(userId, id);
         const row = result.rows[0] || await repository.findOwnedById(userId, id);
@@ -88,7 +77,7 @@ function createNotificationService(database, { notificationRepository = createNo
       });
     },
     async markAllRead(userId) {
-      return transaction(userId, true, async (client) => {
+      return runOperation(userId, true, async (client) => {
         const result = await notificationRepository(client).markAllRead(userId);
         return { updatedCount: result.rowCount, changed: result.rowCount > 0 };
       });

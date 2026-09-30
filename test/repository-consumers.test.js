@@ -42,7 +42,11 @@ test("REST service methods delegate queries on the existing transaction client",
         async markAllRead(id) { assert.equal(id, 7); calls.push("all"); return { rowCount: 0 }; }
       };
     },
-    stateRepository(executor) { assert.equal(executor, client); return { async summary(id) { assert.equal(id, 7); return { revision: "9007199254740994", unreadCount: 0 }; } }; }
+    stateRepository(executor) { assert.equal(executor, client); return {
+      async ensure(id) { assert.equal(id, 7); }, async lock(id) { assert.equal(id, 7); },
+      async increment() { assert.fail("no-op must not increment revision"); },
+      async summary(id) { assert.equal(id, 7); return { revision: "9007199254740994", unreadCount: 0 }; }
+    }; }
   });
   const page = await service.list(7, { limit: "1" });
   assert.equal(page.nextCursor, row.id); assert.equal(page.notifications.length, 1);

@@ -3,7 +3,7 @@
 Seguir la migración incremental de design.md, verificando cada paso. No superponer el helper transaccional anterior y el UoW en una operación; retirar el helper al terminar sus consumidores. Ninguna tarea autoriza commit automático, merge, despliegue ni archivo OpenSpec.
 
 - [x] 1.1 Registrar ejecución base de las 73 pruebas con npm.cmd test mediante PostgreSQL temporal; investigar diferencias sin eliminar cobertura.
-- [ ] 1.2 Fijar matriz de contratos y consultas de auth, salud, notificaciones y Socket.IO a partir del inventario de design.md; conservar firmas usadas por las pruebas.
+- [x] 1.2 Fijar matriz de contratos y consultas de auth, salud, notificaciones y Socket.IO a partir del inventario de design.md; conservar firmas usadas por las pruebas.
 
 ## 2. Repository
 
@@ -22,7 +22,7 @@ Seguir la migración incremental de design.md, verificando cada paso. No superpo
 ## 4. Integración transaccional
 
 - [x] 4.1 Migrar createLogin al UoW: asegurar/bloquear estado, insertar aviso, incrementar solo ante cambio y resumir antes de confirmar.
-- [ ] 4.2 Migrar list, unreadCount, markRead y markAllRead preservando snapshots, concurrencia, fechas, idempotencia y errores existentes.
+- [x] 4.2 Migrar list, unreadCount, markRead y markAllRead preservando snapshots, concurrencia, fechas, idempotencia y errores existentes.
 - [x] 4.3 Mantener login no bloqueante, pool secundario acotado y publicación fuera del UoW; usar una barrera de COMMIT pendiente para verificar cero llamadas a publish antes de confirmar y ninguna ante rechazo; comprobar emisión fallida sin perder datos. Conservar notifications:ready independiente.
 - [x] 4.4 Agregar integración real de commit visible desde otra conexión y rollback en incremento de revisión con estado nuevo y previo, sin exigir secuencias consecutivas.
 - [x] 4.5 Comprobar nueva adquisición tras éxito/fallo con pool max 1 y timeout; conservar pruebas concurrentes, deduplicación y regresiones actuales de rollback.
@@ -75,3 +75,11 @@ Etapa 1 autorizada: infraestructura base y pruebas, sin migrar consumidores. Sol
 - npm.cmd test: 97 aprobadas, 0 fallidas, PostgreSQL efímero aislado. OpenSpec estricto del cambio válido; global 8 aprobados. git diff --check sin errores.
 - Dockerfile.api incluye unit-of-work.js. 5.1 permanece parcial porque no se construyó ni arrancó una imagen en esta etapa. Siguen pendientes 1.2, 4.2 y las tareas finales 5.1–5.6; las validaciones aquí registradas corresponden a esta etapa, no al cierre de toda la implementación.
 - No se modificó la PWA ni se hizo commit, push, merge, despliegue o archivo OpenSpec.
+
+### Tareas 1.2 y 4.2 — 2026-09-30
+
+- Matriz de contratos/consultas incorporada en design.md, basada en rutas, servicios, repositorios y pruebas: salud, registro/login/me, REST de notificaciones y transporte Socket.IO; incluye errores, formas JSON, tipos, aislamiento y evidencia.
+- list, unreadCount, markRead y markAllRead usan una única unidad por operación. Retirado helper manual y todo SQL directo del servicio. runOperation solo coordina reglas y repositorios, sin adquirir ni liberar conexiones. db.js conserva la inicialización DDL independiente.
+- test/rest-uow.test.js comprueba una adquisición, cliente compartido, orden, snapshots de lectura, límites locales, bloqueos/incremento en escritura y rollback con 404. Ajustado doble de estado en repository-consumers para reflejar sus métodos reales, con rechazo explícito de incremento en no-op.
+- Dirigidas: node --test test/rest-uow.test.js test/repository-consumers.test.js test/unit-of-work.test.js test/login-uow.test.js, 25 aprobadas. npm.cmd test, 102 aprobadas, 0 fallidas, PostgreSQL efímero aislado; incluye concurrencia, fechas, idempotencia, autorización, publicación, reconexión y login secundario.
+- Las tareas 5.1–5.6 permanecen pendientes para la etapa final. No se modificó PWA ni se hizo commit, push, merge, despliegue o archivo OpenSpec. Archivos guardados en UTF-8.

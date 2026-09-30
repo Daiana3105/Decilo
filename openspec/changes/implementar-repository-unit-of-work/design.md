@@ -17,6 +17,25 @@ Las mutaciones de notificaciones ya son atómicas: BEGIN, timeouts locales, esta
 
 ## Goals / Non-Goals
 
+### Matriz de contratos y consultas conservados (tarea 1.2)
+
+Matriz basada en `server.js`, `auth.js`, `notifications.js`, `realtime.js`, repositorios y suites indicadas. No introduce contratos nuevos.
+
+| Consumidor | Consultas / ejecutor | Contrato y comprobación |
+| --- | --- | --- |
+| GET /api/health | databaseHealth.check: SELECT 1 sobre pool | 200 `{status: "ok", database: "ok"}`; fallo 503 `{status: "error", database: "unavailable"}`. `auth.test.js`, `repository-consumers.test.js`. |
+| POST /api/auth/register | users.insert, INSERT parametrizado sobre pool, hash bcrypt previo | 201 `{token,user}`; 400 VALIDATION_ERROR con fields; 409 EMAIL_IN_USE. Normalización y roles existentes; user solo id/nombre/email/rol/fechaCreacion, sin hash. `auth.test.js`. |
+| POST /api/auth/login | users.findByEmail, SELECT parametrizado sobre pool | 200 `{token,user}`; 401 INVALID_CREDENTIALS. Aviso secundario posterior sin esperar persistencia; fallo no invalida JWT. `auth.test.js`, `notifications.test.js`, `login-notifications.test.js`. |
+| GET /api/auth/me y middleware REST | users.findById tras verificar JWT HS256, subject y expiración | 200 `{user}`; 401 AUTH_REQUIRED/AUTH_INVALID; dependencia 503 SERVICE_UNAVAILABLE. Roles sin cambios. `auth.test.js`, `notifications.test.js`. |
+| GET /api/notifications | listBefore y summary: SELECT ordenado ID DESC, cursor exclusivo, COUNT/revisión | UoW REPEATABLE READ READ ONLY; 200 `{notifications,nextCursor,unreadCount,revision}`. Limit 20 predeterminado, máximo 100; solicita limit+1. `notifications.test.js` (paginación y snapshots concurrentes), `rest-uow.test.js`. |
+| GET /api/notifications/unread-count | summary: COUNT no leídas y revisión del mismo snapshot | UoW REPEATABLE READ READ ONLY; 200 `{unreadCount,revision}`; estado ausente revisión "0". `notifications.test.js`, `rest-uow.test.js`. |
+| POST /api/notifications/:id/read | ensure, lock FOR UPDATE, markRead UPDATE, fallback findOwnedById, increment condicional, summary | UoW de escritura; 200 `{notification,unreadCount,revision}`. Preserva primera readAt; ajeno/inexistente mismo 404 NOTIFICATION_NOT_FOUND. `notifications.test.js`, `rest-uow.test.js`. |
+| POST /api/notifications/read-all | ensure, lock, markAllRead UPDATE no leídas, increment condicional, summary | UoW de escritura; 200 `{updatedCount,unreadCount,revision}`; repetición no aumenta revisión. Cubre páginas no cargadas, creación posterior queda no leída. `notifications.test.js`. |
+| createLogin (interno) | ensure, lock, insert ON CONFLICT, increment condicional, summary | Una conexión UoW; DTO interno changed/notification/unreadCount/revision; duplicado no incrementa. `login-uow.test.js`, `repository-uow-integration.test.js`. |
+| Socket.IO /socket.io/ | authenticateToken reutiliza users.findById; sin SQL de transporte | Sala user:id decidida por servidor; notifications:ready al conectar; notifications:changed `{revision,unreadCount}` solo después de commit efectivo. Expiración, orígenes, reconexión y REST conservados. `realtime.test.js`. |
+
+Todas las rutas de notificaciones requieren identidad JWT, ignoran destinatario suministrado y conservan Cache-Control no-store. Parámetros inválidos: 400 INVALID_NOTIFICATION_INPUT; dependencia: 503 NOTIFICATIONS_UNAVAILABLE saneado. Notification pública: id/type/title/body/createdAt/readAt; id y revision BIGINT como strings, contadores como números. `changed` no sale en JSON REST. Lecturas y escrituras usan límites locales statement_timeout 5s y lock_timeout 2s; solo las escrituras aseguran y bloquean estado. El UoW resuelve tras COMMIT/release y server.js publica fuera de él; un rollback no publica. JSON inválido mantiene 400 INVALID_JSON y CORS conserva 403 CORS_ORIGIN_DENIED/OPTIONS 204. DDL, esquema y su transacción de arranque siguen en db.js, independientes.
+
 Separar SQL de reglas, reutilizar el control de transacciones y demostrar la propiedad de una conexión por operación. Mantener rutas, payloads, estados HTTP, errores, JWT, roles, CORS, no-store de notificaciones, BIGINT como string y eventos existentes. No cambiar tablas, columnas, índices, restricciones ni inicialización. No incluir nuevas funcionalidades o dependencias.
 
 ## Decisions
