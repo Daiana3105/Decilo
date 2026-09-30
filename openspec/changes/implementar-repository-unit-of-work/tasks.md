@@ -29,12 +29,12 @@ Seguir la migración incremental de design.md, verificando cada paso. No superpo
 
 ## 5. Empaquetado y validación de la implementación futura
 
-- [ ] 5.1 Incluir módulos nuevos en Dockerfile.api y verificar arranque en entorno aislado; mantener DDL, esquema público y dist sin archivos privados.
-- [ ] 5.2 Documentar Repository/UoW, flujo atómico, excepción DDL, errores de commit incierto y pruebas en ARCHITECTURE.md y test/README.md.
-- [ ] 5.3 Ejecutar npm.cmd test: conservar las 73 pruebas de referencia y aprobar nuevas pruebas; registrar totales y fallos sin ocultarlos.
-- [ ] 5.4 Ejecutar secuencialmente npm.cmd run build:frontend y npm.cmd run test:frontend; conservar las 32 regresiones Playwright y registrar resultados reales.
-- [ ] 5.5 Ejecutar openspec.cmd status --change implementar-repository-unit-of-work, validación estricta del cambio y global, y git diff --check.
-- [ ] 5.6 Revisar diff, ausencia de secretos/generados y alcance exclusivo #17; comprobar que contratos, esquema y cambio PWA permanecen sin alteraciones ajenas.
+- [x] 5.1 Incluir módulos nuevos en Dockerfile.api y verificar arranque en entorno aislado; mantener DDL, esquema público y dist sin archivos privados.
+- [x] 5.2 Documentar Repository/UoW, flujo atómico, excepción DDL, errores de commit incierto y pruebas en ARCHITECTURE.md y test/README.md.
+- [x] 5.3 Ejecutar npm.cmd test: conservar las 73 pruebas de referencia y aprobar nuevas pruebas; registrar totales y fallos sin ocultarlos.
+- [x] 5.4 Ejecutar secuencialmente npm.cmd run build:frontend y npm.cmd run test:frontend; conservar las 32 regresiones Playwright y registrar resultados reales.
+- [x] 5.5 Ejecutar openspec.cmd status --change implementar-repository-unit-of-work, validación estricta del cambio y global, y git diff --check.
+- [x] 5.6 Revisar diff, ausencia de secretos/generados y alcance exclusivo #17; comprobar que contratos, esquema y cambio PWA permanecen sin alteraciones ajenas.
 
 Etapa 1 autorizada: infraestructura base y pruebas, sin migrar consumidores. Solo las casillas marcadas cuentan con evidencia de esta etapa; las demás permanecen pendientes. No se autoriza commit, push, merge, despliegue ni archivo OpenSpec. Issue: https://github.com/Daiana3105/Decilo/issues/17.
 
@@ -83,3 +83,13 @@ Etapa 1 autorizada: infraestructura base y pruebas, sin migrar consumidores. Sol
 - test/rest-uow.test.js comprueba una adquisición, cliente compartido, orden, snapshots de lectura, límites locales, bloqueos/incremento en escritura y rollback con 404. Ajustado doble de estado en repository-consumers para reflejar sus métodos reales, con rechazo explícito de incremento en no-op.
 - Dirigidas: node --test test/rest-uow.test.js test/repository-consumers.test.js test/unit-of-work.test.js test/login-uow.test.js, 25 aprobadas. npm.cmd test, 102 aprobadas, 0 fallidas, PostgreSQL efímero aislado; incluye concurrencia, fechas, idempotencia, autorización, publicación, reconexión y login secundario.
 - Las tareas 5.1–5.6 permanecen pendientes para la etapa final. No se modificó PWA ni se hizo commit, push, merge, despliegue o archivo OpenSpec. Archivos guardados en UTF-8.
+
+### Validación final — 2026-09-30
+
+- 5.1: Dockerfile.api incluye UoW y repositorios. Construcción y arranque correctos del Compose aislado decilo-17-final-check (58087/55437, red y volumen propios, credenciales temporales fuera de Git). API/PostgreSQL saludables; healthcheck HTTP por Nginx correcto y módulos cargados dentro de la imagen. Se detuvo solo el proyecto de prueba conservando volúmenes; contenedores habituales con IDs, arranques y montajes intactos.
+- 5.2: ARCHITECTURE.md y test/README.md documentan responsabilidades, flujo atómico, DDL independiente, commit incierto, pruebas y evidencia Docker.
+- 5.3: npm.cmd test, 102 aprobadas, 0 fallidas, 0 omitidas; conserva las 73 regresiones originales y las pruebas nuevas, con PostgreSQL efímero.
+- 5.4: después de Node, npm.cmd run build:frontend correcto y npm.cmd run test:frontend, 32 aprobadas en 50,1 s. Sin diferencias de cobertura ni fallos; aviso NO_COLOR/FORCE_COLOR informativo.
+- 5.5: status del cambio 4/4 artefactos completos, validate del cambio --strict válido, validate --all --strict 8 aprobados/0 fallidos, avisos informativos preexistentes. git diff --check sin errores, solo aviso LF/CRLF.
+- 5.6: diff completo contra origin/develop limitado a #17; esquema/db.js, contratos públicos, PWA, dependencias y transporte conservados. Sin secretos operativos ni generados versionados; dist contiene 13 archivos públicos sin backend. El primer control auxiliar de archivos fue bloqueado por spawnSync git EPERM del sandbox; se repitió con permisos y pasó.
+- Todas las tareas cuentan con evidencia. No se hizo commit, push, merge, despliegue ni archivo OpenSpec. Los recursos aislados quedan detenidos, con su volumen conservado.
