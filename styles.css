@@ -19,6 +19,12 @@
   font-size: 16px;
 }
 
+/* Role identity is presentation only; authentication owns the role. */
+[data-identity-role="profesional"], .role-button[data-role="profesional"] { --role-accent: #1d4ed8; --role-surface: #eff6ff; }
+[data-identity-role="paciente"], .role-button[data-role="paciente"] { --role-accent: #166534; --role-surface: #f0fdf4; }
+[data-identity-role="familiar"], .role-button[data-role="familiar"] { --role-accent: #6b21a8; --role-surface: #faf5ff; }
+[data-identity-role], .role-button { --role-text: var(--role-accent, #133e54); --role-focus: var(--role-accent, #133e54); }
+
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; background: var(--canvas); }
 button, input, select, textarea { font: inherit; }
@@ -64,6 +70,7 @@ textarea { min-height: 104px; resize: vertical; }
 .message { min-height: 24px; margin: 0; color: var(--error); font-weight: 600; }
 
 .app-shell { min-height: 100vh; }
+.session-role { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; white-space: nowrap; }
 .topbar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 14px clamp(16px, 4vw, 40px); background: var(--petrol-deep); color: white; box-shadow: 0 3px 12px rgba(0, 0, 0, .12); }
 .topbar .brand-mark { color: white; }
 .topbar .brand-mark b { background: var(--coral); }
@@ -173,4 +180,30 @@ textarea { min-height: 104px; resize: vertical; }
   .stats-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+.role-button .role-icon { background: var(--role-accent); color: white; }
+.role-button[aria-pressed="true"] { border-color: var(--role-accent); background: var(--role-surface); box-shadow: none; }
+.role-button:focus-visible { outline-color: var(--role-focus); }
+body[data-identity-role] .topbar { background: var(--role-accent); }
+body[data-identity-role] .topbar { flex-wrap: wrap; }
+body[data-identity-role] .topbar-actions { flex-wrap: wrap; min-width: 0; }
+body[data-identity-role] .session-label { overflow-wrap: anywhere; }
+body[data-identity-role] .sidebar { min-width: 0; }
+body[data-identity-role] .sidebar nav { max-width: 100%; }
+body[data-identity-role] .page-heading { flex-wrap: wrap; }
+body[data-identity-role] .page-heading > div { min-width: 0; }
+body[data-identity-role] :is(.content, .sidebar) { overflow-wrap: anywhere; }
+body[data-identity-role] .stats-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); }
+body[data-identity-role] .session-label { color: white; }
+body[data-identity-role] :is(h1, h2, h3, .eyebrow) { color: var(--role-text); }
+body[data-identity-role] .sidebar { background: var(--role-surface); }
+body[data-identity-role] :is(.primary-button, .secondary-button, .nav-button[aria-current="page"]) { background: var(--role-accent); border-color: var(--role-accent); color: white; }
+body[data-identity-role] .topbar .icon-button { border-color: white; }
+body[data-identity-role] :is(button, input, select, textarea):focus-visible { outline-color: var(--role-focus); }
+body[data-identity-role] .topbar button:focus-visible { outline-color: white; }
+body[data-identity-role] :is(.primary-button, .secondary-button, .nav-button):hover { text-decoration: underline; }
+@media (forced-colors: active) {
+  .role-button[aria-pressed="true"], body[data-identity-role] .nav-button[aria-current="page"] { border-color: Highlight; border-style: double; }
+  body[data-identity-role] :is(button, input, select, textarea):focus-visible, .role-button:focus-visible { outline-color: Highlight; }
 }
