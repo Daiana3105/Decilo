@@ -1,5 +1,52 @@
 # Pruebas de backend
 
+## Repository y Unit of Work (issue #17)
+
+Los repositorios reciben un ejecutor inyectado y conservan SQL parametrizado,
+filas, rowCount y BIGINT como strings. No controlan transacciones ni contienen
+reglas de autenticación. El UoW controla una adquisición, BEGIN, límites locales,
+COMMIT/ROLLBACK y release; los servicios coordinan bloqueo, mutación y revisión.
+La inicialización DDL de db.js sigue independiente, sin cambios de esquema.
+Un COMMIT sin respuesta tiene resultado incierto: no se reintenta ni emite éxito;
+REST recupera lo confirmado. Errores secundarios no invalidan el login.
+
+| Suite | Evidencia |
+| --- | --- |
+| unit-of-work.test.js | Orden, BEGIN/COMMIT pendientes, resultado, fallos de adquisición/configuración/callback/commit/rollback/release, error original y conexión única. |
+| repositories.test.js / repository-consumers.test.js | Inyección, parámetros, resultados y consumidores HTTP sin SQL directo. |
+| repository-uow-integration.test.js | PostgreSQL real efímero: commit visible, rollback sin aviso/revisión parcial con estado nuevo o previo, deduplicación y pool max 1 reutilizable. |
+| login-uow.test.js / login-notifications.test.js | Misma conexión en repositorios, publicación posterior a COMMIT, ninguna mientras espera o rechaza, límites y logs saneados. |
+| rest-uow.test.js | Snapshots de lectura, bloqueo/incremento en escrituras, release y rollback con 404 indistinguible. |
+| notifications.test.js / realtime.test.js | Contratos, autorización, concurrencia, fechas, login no bloqueante, fallos secundarios, reconexión y recuperación REST. |
+
+Validación final local del 2026-09-30: `npm.cmd test`, **102 aprobadas, 0 fallidas**,
+con el runner PostgreSQL temporal protegido. `npm.cmd run build:frontend` correcto.
+Después del build, `npm.cmd run test:frontend`: **32 aprobadas en 50,1 s**,
+sin omisiones ni cambios de cobertura. El aviso NO_COLOR/FORCE_COLOR fue
+informativo; el proceso terminó con código 0.
+
+La imagen API se construyó y arrancó con el Compose real en el proyecto separado
+`decilo-17-final-check`: frontend 58087, PostgreSQL 55437, red
+`decilo-17-final-check_default` y volumen `decilo-17-final-check_decilo-postgres`.
+Se usó `--env-file` temporal fuera del repositorio con credenciales sintéticas
+nuevas, eliminando variables heredadas DB/PG/JWT/Compose del proceso de prueba.
+No se leyó el .env operativo. Comandos: `docker compose -p decilo-17-final-check
+--env-file <archivo-temporal> config --quiet` y `up --build -d --wait`.
+API y PostgreSQL saludables; `/api/health` por Nginx respondió status/database ok.
+Dentro de la imagen se cargaron UoW y los cuatro módulos de repositories sin error.
+Los contenedores habituales conservaron IDs, horas de arranque y montajes.
+Al terminar se detuvo únicamente ese proyecto con `stop`; se conservaron
+contenedores y volumen. Los IDs, horas de arranque y montajes de los contenedores
+habituales siguieron iguales después de detener las pruebas. No se borraron
+datos ni volúmenes ni se realizó despliegue.
+
+Revisión de rama contra origin/develop: cambios limitados a #17 (persistencia,
+consumidores, empaquetado API, pruebas y documentación/OpenSpec). db.js, esquema,
+frontend/PWA, contratos HTTP y eventos conservados. No se incorporaron secretos
+operativos ni archivos dist/reportes; las credenciales de pruebas versionadas son
+sintéticas. OpenSpec estricto del cambio y global y git diff --check se ejecutan
+como comprobaciones de cierre junto con el status del cambio.
+
 Ejecutar `npm.cmd test` en Windows o `npm test` en otros sistemas.
 
 Se necesitan binarios locales de PostgreSQL (`initdb`, `pg_ctl`). En Windows se

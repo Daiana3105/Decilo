@@ -1,3 +1,5 @@
+const { createUserRepository } = require("./repositories/user-repository");
+const { createDatabaseHealth } = require("./repositories/database-health");
 const express = require("express");
 const http = require("node:http");
 const { randomUUID } = require("node:crypto");
@@ -14,7 +16,7 @@ const {
   verifyPassword
 } = require("./auth");
 
-function createApp({ config = loadConfig(), database, notificationService = createNotificationService(database),
+function createApp({ config = loadConfig(), database, users = createUserRepository(database), databaseHealth = createDatabaseHealth(database), notificationService = createNotificationService(database),
   publish = () => {}, logger = (entry) => console.error(entry), loginNotifications } = {}) {
   const app = express();
   const jobs = loginNotifications || createLoginNotifications({ service: notificationService, publish, logger });
@@ -36,7 +38,7 @@ function createApp({ config = loadConfig(), database, notificationService = crea
 
   app.get("/api/health", async (_request, response) => {
     try {
-      await database.query("SELECT 1 AS ok");
+      await databaseHealth.check();
       response.json({ status: "ok", database: "ok" });
     } catch (_error) {
       response.status(503).json({ status: "error", database: "unavailable" });
@@ -48,7 +50,7 @@ function createApp({ config = loadConfig(), database, notificationService = crea
     if (Object.keys(errors).length) return response.status(400).json({ error: "VALIDATION_ERROR", message: "Revisá los campos indicados.", fields: errors });
 
     try {
-      const user = await registerUser(database, values);
+      const user = await registerUser(database, values, users);
       return response.status(201).json({ token: signToken(user, config), user: publicUser(user) });
     } catch (error) {
       if (error.code === "23505") return response.status(409).json({ error: "EMAIL_IN_USE", message: "Ese correo ya está registrado.", fields: { email: "Usá otro correo electrónico." } });
@@ -59,21 +61,20 @@ function createApp({ config = loadConfig(), database, notificationService = crea
   app.post("/api/auth/login", async (request, response) => {
     const email = String(request.body?.email || "").trim().toLowerCase();
     const password = String(request.body?.password || "");
-    const result = await database.query("SELECT * FROM users WHERE email = $1", [email]);
-    const user = result.rows[0];
+    const user = await users.findByEmail(email);
     if (!user || !(await verifyPassword(password, user.password_hash))) return response.status(401).json({ error: "INVALID_CREDENTIALS", message: "El correo o la contraseña no son válidos." });
     response.json({ token: signToken(user, config), user: publicUser(user) });
     try { jobs.schedule(user.id); }
     catch (_) { safeLog(logger, "schedule", randomUUID()); }
   });
 
-  app.get("/api/auth/me", authMiddleware(database, config), (request, response) => {
+  app.get("/api/auth/me", authMiddleware(database, config, users), (request, response) => {
     response.json({ user: publicUser(request.user) });
   });
 
   const notifications = express.Router();
   notifications.use((_request, response, next) => { response.setHeader("Cache-Control", "no-store"); next(); });
-  notifications.use(authMiddleware(database, config));
+  notifications.use(authMiddleware(database, config, users));
   function notificationRoute(operation) {
     return async (request, response) => {
       try {
