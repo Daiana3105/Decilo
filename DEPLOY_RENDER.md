@@ -191,50 +191,77 @@ de notificaciones ni completa el checklist anterior o la tarea 8.4.
 - Persistencia: verificada después de redesplegar la API.
 - Secretos: no se publicaron secretos, credenciales, contraseñas ni tokens.
 
-## 8. Preparación PWA del issue #12 (sin despliegue)
+## 8. Verificación pública y configuración de Headers PWA en Render
 
-El artefacto incluye manifest y cinco íconos, nombre DECILO y apertura standalone
-desde `/`. No requiere nuevos servicios, variables, service worker ni soporte
-offline. La ayuda al pie explica los menús de Chrome y Safari/iPhone. Los PNG
-están versionados: Render usa los recursos del commit y no ejecuta el generador.
+### 8.1. Auditoría HTTP inicial en producción (2026-09-28)
 
-Después de autorización para publicar, conservar `npm ci && npm run build:frontend`
-y Publish Directory `dist`. En el Dashboard del **Static Site**, sección Headers,
-preparar estas reglas; no configurarlas en la API ni suponer que nginx.conf se usa
-en Render:
+La verificación HTTP realizada tras el release v1.1.0 contra `https://decilo-web.onrender.com` arrojó los siguientes valores reales:
 
-| Path | Header | Value |
-| --- | --- | --- |
-| `/` | `Cache-Control` | `no-cache` |
-| `/index.html` | `Cache-Control` | `no-cache` |
-| `/manifest.webmanifest` | `Cache-Control` | `no-cache` |
-| `/manifest.webmanifest` | `Content-Type` | `application/manifest+json` |
-| `/icons/*` | `Cache-Control` | `no-cache` |
-| `/icons/*.png` | `Content-Type` | `image/png` |
+| Recurso | Código | Content-Type real | Cache-Control real | ETag real |
+| --- | --- | --- | --- | --- |
+| `/` | 200 OK | `text/html; charset=utf-8` | `public, max-age=0, s-maxage=300` | `W/"245e6b..."` |
+| `/manifest.webmanifest` | 200 OK | `binary/octet-stream` | `public, max-age=0, s-maxage=300` | `"f1db37..."` |
+| `/icons/*.png` (5 íconos) | 200 OK | `image/png` | `public, max-age=0, s-maxage=300` | individual |
+| `/icons/inexistente.png` | 404 Not Found | `text/plain; charset=utf-8` | — | — |
+| `/inexistente.webmanifest` | 404 Not Found | `text/plain; charset=utf-8` | — | — |
+| `/api/health` (Web Service) | 200 OK | `application/json` | — | `{"status":"ok","database":"ok"}` |
 
-Ver [headers de Static Sites](https://render.com/docs/static-site-headers).
-Este frontend navega mediante estado interno, no rutas de History API: no necesita
-rewrite global `/* → /index.html`. Si existe esa regla, retirarla en la etapa
-autorizada para que un ícono/manifest faltante responda 404. Los archivos existentes
-tienen precedencia sobre rewrites, pero los faltantes podrían devolver HTML.
-Ver [reglas de Render](https://render.com/docs/redirects-rewrites).
+### 8.2. Contraste técnico frente a especificación y pruebas
 
-Verificar por HTTPS en `https://decilo-web.onrender.com`: `/`, manifest y los cinco
-PNG deben responder 200 con tipo correcto; `/icons/inexistente.png` y
-`/inexistente.webmanifest` deben responder 404. Comprobar headers efectivos y
-ETag/Last-Modified, revalidación y ausencia de contenido mixto. La API permanece en
-su origen configurado y Socket.IO usa HTTPS/WSS; las reglas anteriores no les aplican.
+- **MIME del Manifest**: Render entrega por defecto `Content-Type: binary/octet-stream` para archivos `.webmanifest` al no tener el mapeo MIME en su servidor estático nativo. La especificación PWA del W3C y las pruebas del proyecto (`e2e/pwa.spec.js` y `test/frontend-pwa.test.js`) exigen `application/manifest+json`.
+- **Cache-Control predeterminado**: Render aplica por defecto `public, max-age=0, s-maxage=300` a través de Cloudflare CDN (el navegador no guarda sin consultar, pero el CDN retiene 5 minutos). Se requiere definir la política explícita en el Dashboard.
+
+### 8.3. Definición y justificación de la política de caché por recurso
+
+1. **Puntos de entrada y recursos mutables (`/`, `/index.html`, `/manifest.webmanifest`, `/config.js`)**:
+   - **Regla**: `Cache-Control: no-cache` (o `public, max-age=0, must-revalidate`).
+   - **Justificación**: Son los puntos de descubrimiento del frontend. Si se publica una actualización o se modifican referencias, los navegadores y el CDN deben revalidar inmediatamente contra el origen con ETag / 304, evitando que los usuarios queden retenidos en versiones obsoletas de la aplicación.
+   - **Content-Type de manifest**: `/manifest.webmanifest` debe forzar explícitamente `Content-Type: application/manifest+json`.
+
+2. **Íconos PNG con nombres versionados (`/icons/*-v*.png`)**:
+   - **Nombres versionados**: `favicon-v1.png`, `apple-touch-icon-v1.png`, `decilo-192-v1.png`, `decilo-512-v1.png`, `decilo-maskable-512-v1.png`.
+   - **Regla**: `Cache-Control: public, max-age=31536000, immutable` y `Content-Type: image/png`.
+   - **Justificación**: Al poseer el sufijo `-v1` en el nombre de archivo, el contenido bajo esa URL es inmutable. Si el diseño visual cambia en el futuro, el generador y el manifest adoptarán el sufijo `-v2.png`. Por ende, permitir que el navegador y la red de borde (CDN) almacenen en caché estos recursos de forma prolongada e inmutable (`max-age=31536000, immutable`) elimina peticiones HTTP redundantes, acelera la carga en dispositivos móviles (iPhone/Android) y no genera riesgo de obsolescencia.
+   - *(Alternativa de revalidación uniforme: Si se desea mantener paridad exacta con Nginx local, se puede configurar `no-cache` también para `/icons/*`, pero no aprovecha la inmutabilidad de los nombres versionados).*
+
+### 8.4. Configuración requerida en el Dashboard de Render
+
+En el Dashboard de Render ([dashboard.render.com](https://dashboard.render.com)), seleccionar el Static Site `decilo-web` -> sección **Settings** -> **Custom Headers**, y configurar las siguientes reglas:
+
+| Path | Header | Value | Justificación |
+| --- | --- | --- | --- |
+| `/` | `Cache-Control` | `no-cache` | Revalidación continua de entrada |
+| `/index.html` | `Cache-Control` | `no-cache` | Revalidación continua de entrada |
+| `/manifest.webmanifest` | `Content-Type` | `application/manifest+json` | MIME estándar W3C para manifests |
+| `/manifest.webmanifest` | `Cache-Control` | `no-cache` | Descubrimiento oportuno de cambios |
+| `/icons/*` | `Cache-Control` | `public, max-age=31536000, immutable` | Caché prolongada para íconos versionados |
+| `/icons/*.png` | `Content-Type` | `image/png` | MIME de imágenes PNG |
+
+*Nota sobre rewrites*: Este frontend navega mediante estado interno. No configurar rewrite global `/* → /index.html` para asegurar que los recursos inexistentes devuelvan HTTP 404 en lugar de HTML con código 200.
+
+### 8.5. Estado de verificación de dispositivos y cierre de tareas
+
+- **Safari en iPhone 13 (Tarea 5.2 - Completa)**: Comprobada en dispositivo físico real por la usuaria el 2026-09-28; instalación operativa mediante «Agregar a pantalla de inicio» y apertura standalone. Se registró la observación de que **el diseño móvil es mejorable**.
+- **Chrome Android (Tarea 5.1 - Pendiente)**: Permanece pendiente hasta contar con pruebas en dispositivo físico Android real.
+- **Render público (Tarea 5.4 - Pendiente)**: Permanece pendiente hasta que las cabeceras anteriores sean configuradas en el Dashboard de Render y se vuelva a comprobar por HTTP que `/manifest.webmanifest` responde `application/manifest+json` y los íconos aplican la política de caché definida.
+
+### 8.6. Actualización y rollback de recursos
+
+Conservar `npm ci && npm run build:frontend` y Publish Directory `dist`. Las reglas
+de headers anteriores corresponden al Static Site, no a la API; `nginx.conf` no
+configura el servidor estático de Render. La API conserva su origen HTTPS y
+Socket.IO usa HTTPS/WSS. Ver [headers de Static Sites](https://render.com/docs/static-site-headers)
+y [reglas de Render](https://render.com/docs/redirects-rewrites).
 
 Al cambiar imágenes, incrementar el sufijo de versión en generador, manifest,
-HTML y allowlist/pruebas. Mantener `id: /` estable. `no-cache` permite guardar
-recursos públicos pero exige revalidarlos; no equivale a caché de API o datos de
-cuenta. El sistema operativo decide cuándo actualiza el ícono ya instalado. Probar
-cerrar y reabrir antes de reinstalar; advertir que una reinstalación puede no
-conservar datos locales. No borrar sessionStorage/localStorage para actualizar.
-Un rollback del frontend debe recuperar en conjunto HTML, manifest e imágenes de
-la misma versión y revisar los headers; no elimina accesos instalados ni datos.
+HTML y allowlist/pruebas, manteniendo `id: /` estable. No reemplazar el contenido
+de una URL declarada immutable. `no-cache` permite guardar recursos públicos
+pero exige revalidarlos; no equivale a caché de API o datos autenticados.
 
-Pendiente después de publicación autorizada: HTTP público real, instalación en
-Chrome escritorio/Android y Safari iPhone con versión/fecha, nombre/ícono,
-standalone, reapertura y sesión. No confundir pruebas de viewport con instalación
-en celular. Esta documentación no modifica Dashboard, auto-deploy ni producción.
+El sistema operativo decide cuándo actualiza el ícono instalado. Probar cerrar
+y reabrir antes de reinstalar; una reinstalación puede no conservar datos locales.
+No borrar sessionStorage/localStorage para actualizar. Un rollback debe recuperar
+juntos HTML, manifest e imágenes de la misma versión y revisar sus headers; no
+elimina accesos instalados ni datos. Comprobar por HTTPS los recursos existentes,
+404 de faltantes, ETag/Last-Modified, revalidación y ausencia de contenido mixto.
+Estas instrucciones no acreditan ejecución ni completan tareas pendientes.

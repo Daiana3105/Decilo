@@ -32,7 +32,7 @@ inicializa el esquema aditivamente en una transacción idempotente, conserva dat
 y crea estado para usuarios existentes sin inventar avisos históricos; las nuevas
 cuentas obtienen el estado perezosamente en su primera mutación.
 
-`notifications.js` serializa escrituras bloqueando el estado del usuario con
+`notifications.js` coordina repositorios y Unit of Work para serializar escrituras bloqueando el estado del usuario con
 `FOR UPDATE`. Solo cambios efectivos incrementan la revisión; lectura individual
 repetida conserva la primera fecha. La lectura general incluye páginas no cargadas;
 una creación serializada después queda pendiente. Listado y resumen usan snapshots
@@ -113,6 +113,45 @@ En entorno local saludable las pestañas convergen en cinco segundos; una señal
 perdida sin desconexión se recupera en el siguiente disparador REST, no en un plazo
 fijo sin actividad. La red suspendida, arranque en frío y trabajos no persistidos
 quedan fuera de esa garantía. No hay correo, push, revocación global ni avisos entre personas.
+
+## Repository y Unit of Work (issue #17)
+
+Los repositorios de `repositories/` reciben explícitamente un ejecutor `query`:
+pool para consultas independientes de usuarios/salud y cliente transaccional
+para notificaciones. `user-repository.js` concentra búsqueda por ID/email e
+inserción de usuarios; `notification-repository.js`, consultas y mutaciones de
+avisos; `notification-state-repository.js`, estado, bloqueo, incremento y resumen.
+`database-health.js` es un adaptador de salud, no un repositorio de dominio.
+SQL parametrizado y resultados de persistencia viven en estos módulos; validación,
+bcrypt, JWT, DTO, contenido del evento y decisión de incrementar revisión siguen
+en servicios. Los repositorios no adquieren, liberan ni confirman conexiones.
+
+`unit-of-work.js` adquiere un único cliente por `run`, espera BEGIN y límites
+locales, ejecuta el callback y espera COMMIT antes de devolver su resultado.
+Ante error intenta ROLLBACK y libera una sola vez en finally; conserva el error
+original aunque falle rollback o release. Descarta clientes ante fallos de BEGIN,
+COMMIT o ROLLBACK. Un error de release posterior a un commit confirmado se propaga
+sin intentar revertirlo. No hay transacciones anidadas ni reintentos automáticos.
+
+Para crear el aviso de login, el servicio crea ambos repositorios sobre ese
+cliente: asegura estado, bloquea con FOR UPDATE, inserta el aviso, incrementa
+revisión solo si hubo inserción y obtiene resumen. Todo se confirma junto.
+El trabajo secundario publica `notifications:changed` después de resolver el UoW;
+el login no espera ese trabajo. Conserva pool secundario, capacidad acotada,
+errores saneados y deduplicación por usuario/evento. `notifications:ready` no cambia.
+
+Listado y contador usan REPEATABLE READ READ ONLY. Las marcas de lectura usan
+la misma unidad y bloqueo por usuario, preservando primera fecha, idempotencia
+y revisiones string. El antiguo helper transaccional manual fue retirado.
+El DDL idempotente y backfill de `db.js` conservan su transacción independiente
+con advisory lock: no se modificaron tablas, restricciones ni contratos públicos.
+
+Si se pierde la respuesta a COMMIT, su resultado puede ser incierto: se rechaza
+la operación y no se publica éxito, pero no se afirma que un commit aplicado
+haya sido revertido. REST permite recuperar estado confirmado; no se repite
+automáticamente la escritura ni se promete entrega durable del aviso.
+`Dockerfile.api` incluye UoW y repositorios; el bundle frontend los excluye.
+Ver [pruebas de Repository/UoW](test/README.md#repository-y-unit-of-work-issue-17).
 
 ## Build y despliegue
 
