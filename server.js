@@ -8,6 +8,8 @@ const { createDatabase, createPool, publicUser } = require("./db");
 const { createNotificationService, NotificationError } = require("./notifications");
 const { createLoginNotifications, safeLog } = require("./login-notifications");
 const { attachRealtime } = require("./realtime");
+const { createAssistantRouter, createAssistantService } = require("./assistant");
+const { createGeminiProvider } = require("./gemini-provider");
 const {
   authMiddleware,
   registerUser,
@@ -17,7 +19,7 @@ const {
 } = require("./auth");
 
 function createApp({ config = loadConfig(), database, users = createUserRepository(database), databaseHealth = createDatabaseHealth(database), notificationService = createNotificationService(database),
-  publish = () => {}, logger = (entry) => console.error(entry), loginNotifications } = {}) {
+  publish = () => {}, logger = (entry) => console.error(entry), loginNotifications, assistantService } = {}) {
   const app = express();
   const jobs = loginNotifications || createLoginNotifications({ service: notificationService, publish, logger });
   app.locals.loginNotifications = jobs;
@@ -34,6 +36,8 @@ function createApp({ config = loadConfig(), database, users = createUserReposito
     if (request.method === "OPTIONS") return response.sendStatus(204);
     next();
   });
+  app.use('/api/assistant', createAssistantRouter({ authenticate: authMiddleware(database, config, users),
+    service: assistantService || createAssistantService({ geminiProvider: createGeminiProvider(config.assistant) }) }));
   app.use(express.json({ limit: "32kb" }));
 
   app.get("/api/health", async (_request, response) => {

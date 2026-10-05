@@ -1,5 +1,59 @@
 # DECILO MVP
 
+## Ayudante: simulador y demo local Gemini
+
+El modo simulado de `assistant.js` implementa una demostración local determinista
+sin claves, herramientas ni llamadas de inferencia. Solo acepta respuestas
+predefinidas de navegación y expresión de necesidades; texto libre desconocido,
+peticiones clínicas o instrucciones adversariales reciben el mensaje de alcance.
+La interfaz muestra «Demostración: respuestas simuladas» y nunca modifica frases
+ni datos de pacientes. `app.js` conserva preguntas/respuestas solo en el DOM de
+la vista: navegar, cancelar o cambiar sesión las elimina y aborta solicitudes;
+las respuestas tardías no se muestran. El texto se renderiza con textContent.
+
+`POST /api/assistant/messages` verifica JWT y usuario actual antes del parser de
+8 KiB y admite solo paciente/familiar. Recibe únicamente `{ message }` (hasta
+800 puntos de código) y responde `{ reply }` con no-store. No incorpora datos de
+sesión al payload del simulador salvo categoría de audiencia; rechaza campos
+extra, mensajes vacíos y patrones evidentes de contactos/credenciales. No es un
+anonimizador de texto libre. No registra cuerpos ni conversaciones.
+
+Ambos modos permiten 5 solicitudes/minuto y 30/día UTC por usuario, una en curso por
+usuario y dos globales. Timeout backend 15 s, cancelación y ningún reintento
+automático. Errores saneados 400/413, 401/403, 429 con Retry-After, 502/503/504.
+Contadores sin contenido en memoria, acotados a 10.000 usuarios por día; se
+reinician al reiniciar la API y no coordinan réplicas. Es un límite de demo de
+costo cero, no el mecanismo durable de presupuesto del diseño completo.
+Persistencia de reservas, precios, retención y activación de producción siguen
+pendientes. Docker API incluye los módulos; el frontend sigue la misma allowlist
+y conserva identidad visual y PWA.
+
+### Gemini solo para demo con datos ficticios
+
+`gemini-provider.js` usa REST generateContent de Google con modelo configurable
+por GEMINI_MODEL (predeterminado gemini-3.5-flash-lite, nivel gratuito documentado).
+GEMINI_DEMO_ENABLED habilita explícitamente la demo y GEMINI_API_KEY se inyecta
+solo al backend en ejecución. Sin esas variables sigue disponible el simulador.
+No pasar claves como build args ni incorporarlas a imágenes. El Compose habitual
+no habilita Gemini: la vista previa usa un env_file privado fuera del repositorio,
+solo en la API, mediante override de Compose.
+
+El usuario elige Gemini y acepta el aviso antes de cada envío; backend exige
+consent=google-demo-v1, mode=gemini y correo de cuenta ficticia .test/.invalid.
+GET /api/assistant/capabilities es autenticado/no-store y no hace inferencia.
+La UI informa envío a Google, posible uso para mejora de productos y revisión
+humana en nivel gratuito; solo adultos con información ficticia. No puede
+garantizarse anonimato de texto libre ni seguridad clínica mediante regex.
+
+Google recibe solo pregunta y guía pública por rol, no JWT, usuario, historial
+ni datos del dominio. Clave en x-goog-api-key; URL fija, sin redirects, herramientas,
+búsqueda, archivos ni caché explícita. store=false no es promesa de retención cero
+por Google. Respuesta acotada y como texto; errores saneados, sin logs de contenido,
+sin reintentos ni cambio automático de modelo. El proveedor puede bloquear o
+limitar solicitudes. Usar proyecto Google gratuito sin facturación: el código no
+puede determinar el nivel comercial de una clave. No habilitar uso productivo.
+Fuentes y pendientes: `openspec/changes/agregar-ayudante-ia/design.md`.
+
 ## Límites de dominio
 
 - `app.js` maneja sesión y navegación del frontend estático. Relaciones, tableros, actividades y progreso son datos de demostración en `localStorage`; no representan relaciones clínicas autorizadas por una API persistente.

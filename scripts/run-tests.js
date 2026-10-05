@@ -43,7 +43,7 @@ async function main() {
     nonce: randomBytes(16).toString("hex") };
   const cleanEnv = { ...process.env };
   for (const key of Object.keys(cleanEnv)) {
-    if (/^(PG|DB_|TEST_DB_|DATABASE_URL$|DECILO_TEST_DATABASE$)/.test(key)) delete cleanEnv[key];
+    if (/^(PG|DB_|TEST_DB_|GEMINI_|DATABASE_URL$|DECILO_TEST_DATABASE$)/.test(key)) delete cleanEnv[key];
   }
   const options = { env: cleanEnv, stdio: "ignore", windowsHide: true, timeout: 60000 };
   let started = false;

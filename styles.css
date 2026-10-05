@@ -71,6 +71,16 @@ textarea { min-height: 104px; resize: vertical; }
 
 .app-shell { min-height: 100vh; }
 .session-role { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; white-space: nowrap; }
+.assistant { max-width: 760px; }
+.assistant form { display: grid; gap: 12px; margin-top: 20px; }
+.assistant button, .assistant summary { min-width: 48px; min-height: 48px; }
+.assistant summary { padding: 12px; cursor: pointer; }
+.assistant summary:focus-visible { outline: 3px solid var(--role-focus, var(--petrol)); outline-offset: 3px; }
+.assistant button { white-space: normal; overflow-wrap: anywhere; max-width: 100%; }
+.assistant [aria-disabled="true"] { cursor: wait; }
+.assistant-consent { display: flex; align-items: center; gap: 12px; }
+.assistant-consent input { width: 28px; min-width: 28px; min-height: 48px; }
+#assistant-reply { white-space: pre-wrap; overflow-wrap: anywhere; }
 .topbar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 14px clamp(16px, 4vw, 40px); background: var(--petrol-deep); color: white; box-shadow: 0 3px 12px rgba(0, 0, 0, .12); }
 .topbar .brand-mark { color: white; }
 .topbar .brand-mark b { background: var(--coral); }
