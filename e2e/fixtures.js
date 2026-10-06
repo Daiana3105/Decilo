@@ -15,7 +15,8 @@ const listen = (server) => new Promise((resolve) => server.listen(0, "127.0.0.1"
 const origin = (server) => `http://127.0.0.1:${server.address().port}`;
 const test = base.extend({
   secondaryMode: ["normal", { option: true }],
-  stack: [async ({ context, secondaryMode }, use) => {
+  familyDemo: [false, { option: true }],
+  stack: [async ({ context, secondaryMode, familyDemo }, use) => {
     const fixture = await isolatedDatabase();
     const app = express();
     const frontend = http.createServer(app);
@@ -24,6 +25,16 @@ const test = base.extend({
       await listen(frontend);
       const config = { database: fixture.databaseConfig, jwtSecret: "isolated-browser-test-secret-at-least-32-characters",
         jwtExpiresIn: "1h", corsOrigins: [origin(frontend)] };
+      let demoUsers, otherDemoUsers;
+      if (familyDemo) {
+        const marker = require('node:crypto').randomBytes(16).toString('hex');
+        await fixture.database.query('CREATE TABLE family_demo_guard(marker TEXT NOT NULL)');
+        await fixture.database.query('INSERT INTO family_demo_guard VALUES($1)', [marker]);
+        config.familyDemo = { enabled: true, marker };
+        const { seedFamilyDemo } = require('../scripts/seed-family-demo');
+        demoUsers = await seedFamilyDemo(fixture.database, { marker, password });
+        otherDemoUsers = await seedFamilyDemo(fixture.database, { marker, password, namespace: 'other-family' });
+      }
       const logs = [];
       const service = createNotificationService(fixture.database);
       const jobs = secondaryMode === "normal" ? undefined : createLoginNotifications({
@@ -45,7 +56,7 @@ const test = base.extend({
       for (const role of ["paciente", "familiar", "profesional"]) {
         users[role] = (await fixture.database.query("INSERT INTO users (nombre,email,password_hash,rol) VALUES ($1,$2,$3,$1) RETURNING *", [role, `${role}@example.test`, hash])).rows[0];
       }
-      await use({ api, logs, db: fixture.database, users, config, url: origin(frontend), apiUrl: origin(api.httpServer),
+      await use({ api, logs, db: fixture.database, users, demoUsers, otherDemoUsers, config, url: origin(frontend), apiUrl: origin(api.httpServer),
         token: (user, expiresIn = "1h") => signToken(user, { ...config, jwtExpiresIn: expiresIn }),
         async login(user) {
           const response = await fetch(`${origin(api.httpServer)}/api/auth/login`, { method: "POST",

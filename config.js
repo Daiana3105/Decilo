@@ -19,6 +19,9 @@ function loadConfig(env = process.env) {
     port: Number(env.PORT || 3000),
     jwtSecret,
     jwtExpiresIn: env.JWT_EXPIRES_IN || "1h",
+    familyDemo: { enabled: env.FAMILY_DEMO_ENABLED === 'true' && env.NODE_ENV !== 'production' &&
+      env.DB_NAME === 'decilo_family_demo' && !databaseUrl && ['127.0.0.1', 'localhost', 'postgres'].includes(env.DB_HOST),
+      marker: String(env.FAMILY_DEMO_MARKER || '') },
     assistant: {
       enabled: Boolean(String(env.GEMINI_API_KEY || '').trim()) || env.GEMINI_DEMO_ENABLED === 'true',
       apiKey: String(env.GEMINI_API_KEY || '').trim(),

@@ -12,6 +12,11 @@ for (const role of ['paciente', 'familiar']) {
     await uiLogin(page, stack, stack.users[role]);
     await page.getByRole('button', { name: 'Ayudante', exact: true }).click();
     await expect(page.getByText('Demostración: respuestas simuladas')).toBeVisible();
+    await expect(page.getByText('¿En qué te puedo ayudar?')).toBeVisible();
+    await expect(page.locator('.assistant-privacy-details')).not.toHaveAttribute('open');
+    await page.getByText('Privacidad y uso', { exact: true }).click();
+    await expect(page.locator('#assistant-privacy')).toBeVisible();
+    await page.getByText('Privacidad y uso', { exact: true }).click();
     for (const width of [320, 768, 1280]) {
       await page.setViewportSize({ width, height: 900 });
       await expect(page.locator('#assistant-message')).toBeVisible();
@@ -94,7 +99,13 @@ test('Gemini demo needs fresh explicit consent and simulated mode stays separate
   await page.locator('#assistant-mode').selectOption('gemini');
   await expect(page.locator('#assistant-google-notice')).toContainText('revisión humana');
   await expect(page.locator('#assistant-consent')).not.toBeChecked();
+  await expect(page.locator('#assistant-consent')).toBeDisabled();
+  await expect(page.locator('#assistant-age')).not.toBeChecked();
   await page.locator('#assistant-message').fill('Dónde busco la actividad');
+  await page.locator('#assistant-send').click(); expect(sent).toHaveLength(0);
+  await expect(page.locator('#assistant-age')).toBeFocused();
+  await page.locator('#assistant-age').check();
+  await expect(page.locator('#assistant-consent')).toBeEnabled();
   await page.locator('#assistant-send').click(); expect(sent).toHaveLength(0);
   await page.locator('#assistant-consent').check();
   await page.locator('#assistant-send').click();
@@ -102,6 +113,7 @@ test('Gemini demo needs fresh explicit consent and simulated mode stays separate
   expect(sent).toEqual([{ message: 'Dónde busco la actividad', mode: 'gemini', consent: 'google-demo-v1' }]);
   await expect(page.locator('#assistant-consent')).not.toBeChecked();
   await page.locator('#assistant-mode').selectOption('simulated');
+  await expect(page.locator('#assistant-age')).not.toBeChecked();
   await expect(page.getByText('Demostración: respuestas simuladas')).toBeVisible();
   await expect(page.locator('#assistant-google-notice')).toBeHidden();
   await page.locator('#assistant-send').click();
@@ -112,4 +124,5 @@ test('Gemini demo needs fresh explicit consent and simulated mode stays separate
   await page.getByRole('button', { name: 'Ayudante', exact: true }).click();
   await expect(page.locator('#assistant-mode')).toHaveValue('simulated');
   await expect(page.locator('#assistant-consent')).not.toBeChecked();
+  await expect(page.locator('#assistant-age')).not.toBeChecked();
 });

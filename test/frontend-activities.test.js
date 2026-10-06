@@ -25,7 +25,7 @@ function setup() {
     addEventListener() {}, remove() { this.removed = true; }, classList: { add() {} } };
   const context = vm.createContext({
     window: { DeciloNotifications: { createWidget: () => ({}) } },
-    document: { activeElement: null, querySelector: () => null },
+    document: { activeElement: null, querySelector: () => null, addEventListener() {} },
     localStorage: { getItem: () => JSON.stringify(state), setItem: (key, value) => writes.push({ key, value }) },
     sessionStorage: { getItem: () => JSON.stringify({ token: "synthetic", user: {}, userId: "prof", role: "profesional" }) },
     FormData: class { get(key) { return fields.get(key) ?? null; } },

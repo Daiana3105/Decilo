@@ -1,4 +1,5 @@
 const { Pool } = require("pg");
+const { initializePatientScheduling } = require('./patient-scheduling-schema');
 
 const CREATE_USERS_TABLE = `
   CREATE TABLE IF NOT EXISTS users (
@@ -55,7 +56,12 @@ async function initializeDatabase(database) {
       CREATE INDEX IF NOT EXISTS notifications_user_id_desc ON notifications (user_id, id DESC);
       CREATE INDEX IF NOT EXISTS notifications_unread_user ON notifications (user_id) WHERE read_at IS NULL;
       INSERT INTO notification_state (user_id) SELECT id FROM users ON CONFLICT DO NOTHING;
+      ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_type_check;
+      ALTER TABLE notifications ADD CONSTRAINT notifications_type_check CHECK (type IN
+        ('session.login','activity.assigned','family.invited','family.accepted','activity.completed','family.revoked',
+         'appointment.created','appointment.confirmed','appointment.rescheduled','appointment.cancelled','appointment.attended'));
     `);
+    await initializePatientScheduling(client);
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});

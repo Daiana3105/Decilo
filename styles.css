@@ -71,8 +71,28 @@ textarea { min-height: 104px; resize: vertical; }
 
 .app-shell { min-height: 100vh; }
 .session-role { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; white-space: nowrap; }
-.assistant { max-width: 760px; }
-.assistant form { display: grid; gap: 12px; margin-top: 20px; }
+.assistant { max-width: 680px; margin-inline: auto; display: grid; gap: 12px; }
+.family-demo { max-width: 850px; margin-inline: auto; overflow-wrap: anywhere; }
+.family-demo form { display: grid; gap: 12px; margin-block: 20px; }
+.family-demo button { min-height: 48px; max-width: 100%; white-space: normal; }
+.family-demo h1 { font-size: clamp(1.6rem, 4vw, 2.4rem); }
+.family-demo h2, .family-demo h3 { margin-top: 18px; }
+.family-demo [hidden] { display: none !important; }
+.assistant h1 { margin: 0; font-size: clamp(1.6rem, 4vw, 2rem); }
+.assistant p { margin: 0; line-height: 1.5; }
+.assistant-subtitle { font-size: 1.1rem; }
+#assistant-mode-label { font-size: .85rem; color: var(--muted); }
+.assistant-mode-control { display: flex; align-items: center; gap: 12px; }
+.assistant-mode-control select { width: auto; flex: 1; min-width: 0; min-height: 48px; padding: 8px 12px; }
+.assistant-privacy-details { border: 1px solid var(--line); border-radius: 12px; }
+.assistant-privacy-details p { margin: 0 12px 12px; }
+.assistant [data-assistant-question] { flex: 1 1 200px; background: var(--role-surface, var(--surface)); color: var(--role-text, var(--ink)); }
+.assistant form { display: grid; gap: 12px; margin: 0; }
+.assistant textarea { min-height: 88px; }
+#assistant-google-notice, #assistant-demo-access { padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--role-surface, var(--surface)); font-size: .9rem; }
+#assistant-google-notice p { margin-bottom: 8px; }
+#assistant-reply:not(:empty) { padding: 16px; border-radius: 16px 16px 16px 4px; border: 1px solid var(--role-accent, var(--line)); background: var(--role-surface, var(--surface)); }
+#assistant-status:empty, #assistant-reply:empty { display: none; }
 .assistant button, .assistant summary { min-width: 48px; min-height: 48px; }
 .assistant summary { padding: 12px; cursor: pointer; }
 .assistant summary:focus-visible { outline: 3px solid var(--role-focus, var(--petrol)); outline-offset: 3px; }
@@ -130,11 +150,23 @@ textarea { min-height: 104px; resize: vertical; }
 .phrase-token span, .picto-tile span { display: block; }
 .phrase-token .symbol, .picto-tile .symbol { font-size: 2rem; }
 .phrase-token .word, .picto-tile .word { font-weight: 700; }
+.phrase-item { display: grid; flex: 0 0 132px; grid-template-rows: 78px 42px; gap: 4px; }
+.phrase-item .phrase-token { width: 100%; min-width: 0; }
+.phrase-item-actions { display: flex; justify-content: center; gap: 4px; }
+.phrase-item-actions .icon-button, .picto-speak { width: 100%; min-width: 40px; height: 40px; min-height: 40px; border-radius: 8px; font-size: 1.1rem; }
 .board-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
 .category-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
 .category-tab { padding: 9px 12px; border: 2px solid var(--line); border-radius: 999px; background: white; font-weight: 700; }
 .category-tab[aria-selected="true"] { border-color: var(--petrol); background: var(--petrol); color: white; }
 .picto-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.picto-entry { display: grid; min-width: 0; grid-template-rows: minmax(112px, 1fr) 42px; gap: 4px; }
+.picto-entry .picto-tile { width: 100%; height: 100%; min-width: 0; }
+.editor-picto-grid { max-height: min(42vh, 360px); overflow: auto; padding: 4px; }
+.editor-picto-tile { display: grid; align-content: center; min-height: 138px; gap: 4px; }
+.editor-picto-tile input { width: 24px; height: 24px; margin: 0 auto; }
+.ordered-pictogram-list { display: grid; max-height: 230px; gap: 8px; overflow: auto; margin: 0; padding: 0; list-style: none; }
+.ordered-pictogram-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.ordered-pictogram-actions { display: flex; align-items: center; gap: 4px; }
 .picto-tile { min-height: 130px; padding: 14px 8px; text-align: center; box-shadow: 0 3px 8px rgba(19, 62, 84, .05); }
 .picto-tile:hover, .picto-tile:focus-visible { border-color: var(--petrol); }
 .picto-tile:active { transform: translateY(2px) scale(.98); }

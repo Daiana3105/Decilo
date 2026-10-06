@@ -66,8 +66,10 @@ async function main() {
     console.log("PostgreSQL efímero aislado: sin conexiones a bases externas.");
     const files = fs.readdirSync(path.join(__dirname, "..", "test")).filter((file) => file.endsWith(".test.js"))
       .map((file) => path.join("test", file));
+    // Bound concurrent suites on Windows: each owns PostgreSQL pools/bcrypt work.
+    // Concurrency scenarios inside each suite still run unchanged.
     const args = process.argv.includes("--browser")
-      ? [require.resolve("@playwright/test/cli"), "test", ...process.argv.slice(3)] : ["--test", ...files];
+      ? [require.resolve("@playwright/test/cli"), "test", ...process.argv.slice(3)] : ["--test", "--test-concurrency=1", ...files];
     const child = spawn(process.execPath, args, {
       cwd: path.join(__dirname, ".."), env: { ...cleanEnv, DECILO_TEST_DATABASE: JSON.stringify(config) },
       stdio: "inherit", windowsHide: true

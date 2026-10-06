@@ -72,6 +72,7 @@ for (const width of [320, 768, 1280]) {
 
 test('a selected role cannot override authenticated identity', async ({ page, stack }) => {
   await uiLogin(page, stack, stack.users.paciente, 'profesional');
+  await expect(page.locator('#login-message')).toContainText('Esta cuenta pertenece');
   await expect(page.locator('#login-form')).toBeVisible();
   await expect(page.locator('body')).not.toHaveAttribute('data-identity-role');
   await uiLogin(page, stack, stack.users.paciente);

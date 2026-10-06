@@ -10,6 +10,8 @@ const { createLoginNotifications, safeLog } = require("./login-notifications");
 const { attachRealtime } = require("./realtime");
 const { createAssistantRouter, createAssistantService } = require("./assistant");
 const { createGeminiProvider } = require("./gemini-provider");
+const { createFamilyDemoRouter, createFamilyDemoService } = require('./family-demo');
+const { initializeFamilyDemo } = require('./family-demo-schema');
 const {
   authMiddleware,
   registerUser,
@@ -32,12 +34,14 @@ function createApp({ config = loadConfig(), database, users = createUserReposito
     response.setHeader("Access-Control-Allow-Origin", origin);
     response.setHeader("Vary", "Origin");
     response.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-    response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    response.setHeader("Access-Control-Allow-Methods", request.path.startsWith('/api/family-demo/') ? "GET, POST, DELETE, OPTIONS" : "GET, POST, OPTIONS");
     if (request.method === "OPTIONS") return response.sendStatus(204);
     next();
   });
   app.use('/api/assistant', createAssistantRouter({ authenticate: authMiddleware(database, config, users),
     service: assistantService || createAssistantService({ geminiProvider: createGeminiProvider(config.assistant) }) }));
+  app.use('/api/family-demo', createFamilyDemoRouter({ authenticate: authMiddleware(database, config, users),
+    service: createFamilyDemoService(database, { ...config.familyDemo, publish, logger }) }));
   app.use(express.json({ limit: "32kb" }));
 
   app.get("/api/health", async (_request, response) => {
@@ -113,6 +117,7 @@ function createApp({ config = loadConfig(), database, users = createUserReposito
 async function createServer({ config = loadConfig(), database, logger, notificationService, loginNotifications } = {}) {
   const ownsDatabase = !database;
   database = database || await createDatabase(config.database);
+  if (config.familyDemo?.enabled) await initializeFamilyDemo(database, config.familyDemo.marker);
   // Separate, bounded pool prevents slow secondary writes from taking all auth connections.
   const backgroundDatabase = config.database ? createPool({ ...config.database, max: 2,
     connectionTimeoutMillis: 1000, statement_timeout: 5000, idle_in_transaction_session_timeout: 10000 }) : null;

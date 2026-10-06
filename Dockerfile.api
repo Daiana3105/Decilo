@@ -8,6 +8,8 @@ RUN npm ci --omit=dev
 
 COPY config.js db.js auth.js server.js notifications.js login-notifications.js realtime.js unit-of-work.js assistant.js gemini-provider.js ./
 COPY repositories/ ./repositories/
+COPY family-demo.js family-demo-schema.js patient-scheduling-schema.js accompaniment-notifications.js ./
+COPY scripts/seed-family-demo.js ./scripts/
 RUN chown -R node:node /app
 USER node
 
