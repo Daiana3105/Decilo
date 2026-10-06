@@ -20,7 +20,7 @@ function loadConfig(env = process.env) {
     jwtSecret,
     jwtExpiresIn: env.JWT_EXPIRES_IN || "1h",
     assistant: {
-      enabled: env.GEMINI_DEMO_ENABLED === 'true',
+      enabled: Boolean(String(env.GEMINI_API_KEY || '').trim()) || env.GEMINI_DEMO_ENABLED === 'true',
       apiKey: String(env.GEMINI_API_KEY || '').trim(),
       model: String(env.GEMINI_MODEL || 'gemini-3.5-flash-lite').trim()
     },

@@ -35,7 +35,7 @@ function createAssistantService({ provider = simulatedProvider, geminiProvider, 
   const quotas = new Map(), busy = new Set();
   return {
     capabilities(user) {
-      return { geminiAvailable: Boolean(geminiProvider?.available && ['paciente', 'familiar'].includes(user.rol) && /^[^@\s]+@[^@\s]+\.(test|invalid)$/i.test(user.email || '')), consentVersion: GOOGLE_CONSENT };
+      return { geminiAvailable: Boolean(geminiProvider?.available && ['paciente', 'familiar'].includes(user.rol) && /^[^@\s]+@(?:[^@\s]+\.(test|invalid)|(?:[^@\s]+\.)?decilo\.(?:test|com))$/i.test(user.email || '')), consentVersion: GOOGLE_CONSENT };
     },
     async reply(user, body, signal) {
       if (!['paciente', 'familiar'].includes(user.rol)) throw new AssistantError(403, 'ASSISTANT_FORBIDDEN', 'El ayudante es para pacientes y familiares.');

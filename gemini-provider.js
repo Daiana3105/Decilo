@@ -43,7 +43,7 @@ function createGeminiProvider({ enabled = false, apiKey = '', model = DEFAULT_MO
       const candidate = result.candidates?.[0];
       if (result.promptFeedback?.blockReason || candidate?.finishReason !== 'STOP') throw new Error('GEMINI_RESPONSE_BLOCKED');
       const parts = candidate.content?.parts;
-      if (!Array.isArray(parts) || parts.some(part => Object.keys(part).some(key => !['text', 'thought'].includes(key)))) throw new Error('GEMINI_RESPONSE_INVALID');
+      if (!Array.isArray(parts) || parts.some(part => Object.keys(part).some(key => !['text', 'thought', 'thoughtSignature'].includes(key)))) throw new Error('GEMINI_RESPONSE_INVALID');
       return { text: parts.filter(part => !part.thought).map(part => part.text || '').join('') };
     }
   };
