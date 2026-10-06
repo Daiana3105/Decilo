@@ -45,6 +45,8 @@
   let activeCategory = "todas";
   let authMode = "login";
   let authMessage = "";
+  let assistantRequest = null;
+  let assistantCapabilitiesRequest = null;
   const notifications = window.DeciloNotifications.createWidget({
     apiUrl: API_PUBLIC_URL,
     onUnauthorized: () => logoutSession("Tu sesi\u00f3n venci\u00f3. Inici\u00e1 sesi\u00f3n nuevamente.")
@@ -72,6 +74,8 @@
   function showToast(message) { const old = document.querySelector(".toast"); if (old) old.remove(); const toast = document.createElement("div"); toast.className = "toast"; toast.setAttribute("role", "status"); toast.textContent = message; document.body.appendChild(toast); setTimeout(() => toast.remove(), 3200); }
 
   function render() {
+    assistantRequest?.abort(); assistantRequest = null;
+    assistantCapabilitiesRequest?.abort(); assistantCapabilitiesRequest = null;
     const role = session?.user?.role;
     if (Object.hasOwn(roleLabels, role)) document.body.dataset.identityRole = role;
     else delete document.body.dataset.identityRole;
@@ -83,12 +87,111 @@
       icon.setAttribute("aria-hidden", "true");
       icon.textContent = { profesional: "✦", paciente: "◉", familiar: "⌂" }[role];
       badge.append(icon, document.createTextNode(` ${roleLabels[role]}`));
-      document.querySelector(".topbar-actions").prepend(badge);
+      (document.querySelector(".account-info") || document.querySelector(".topbar-actions")).prepend(badge);
     }
-    bindEvents(); notifications.mount();
+    mountAssistant(); bindEvents(); notifications.mount();
+  }
+  function mountAssistant() {
+    if (!['paciente', 'familiar'].includes(session?.user?.role)) return;
+    const nav = document.querySelector('.sidebar nav');
+    const entry = document.createElement('button');
+    entry.className = 'nav-button'; entry.textContent = 'Ayudante';
+    entry.setAttribute('aria-current', view === 'ayudante' ? 'page' : 'false');
+    entry.addEventListener('click', () => { view = 'ayudante'; render(); document.getElementById('assistant-title')?.focus(); });
+    nav.append(entry);
+    if (view !== 'ayudante') return;
+    nav.querySelectorAll('[data-view]').forEach(button => button.setAttribute('aria-current', 'false'));
+    document.querySelector('.content').innerHTML = `<section class="assistant panel" aria-labelledby="assistant-title">
+      <h1 id="assistant-title" tabindex="-1">Ayudante</h1>
+      <p><strong id="assistant-mode-label">Demostración: respuestas simuladas</strong></p>
+      <p>Ayuda para usar DECILO y expresar necesidades. No ofrece orientación clínica ni cambia tus datos.</p>
+      <p id="assistant-privacy">Usá solo cuentas y preguntas ficticias. No escribas nombres, contactos, claves ni información clínica. DECILO no guarda conversaciones. En modo simulado no se envía contenido a un proveedor externo.</p>
+      <label for="assistant-mode">Modo de demostración<select id="assistant-mode"><option value="simulated">Simulado — sin envío externo</option><option value="gemini" disabled>Gemini — envío a Google</option></select></label>
+      <p id="assistant-availability" class="hint">Comprobando disponibilidad de Gemini…</p>
+      <div class="button-row" aria-label="Preguntas sugeridas">
+        <button type="button" class="secondary-button" data-assistant-question>Cómo usar DECILO</button>
+        <button type="button" class="secondary-button" data-assistant-question>Ayudarme a expresar una necesidad</button>
+      </div>
+      <form id="assistant-form">
+        <div id="assistant-google-notice" hidden>
+          <p>Al enviar, Google recibe tu pregunta y una guía pública de DECILO según el rol. No enviamos tu cuenta, JWT, historial ni datos de pacientes. En el nivel gratuito Google puede usar las preguntas y respuestas para mejorar sus productos y someterlas a revisión humana. Gemini puede equivocarse; no es orientación clínica.</p>
+          <label class="assistant-consent"><input id="assistant-consent" type="checkbox" />Soy mayor de edad, uso solo datos ficticios y acepto enviar esta pregunta a Google.</label>
+        </div>
+        <label for="assistant-message">Tu pregunta<textarea id="assistant-message" rows="3" aria-describedby="assistant-privacy assistant-limit" required></textarea></label>
+        <p id="assistant-limit" class="hint">Hasta 800 caracteres. 5 consultas por minuto y 30 por día en esta demostración.</p>
+        <div class="button-row"><button class="primary-button" id="assistant-send" type="submit">Enviar pregunta</button><button class="secondary-button" id="assistant-cancel" type="button">Cancelar y borrar</button></div>
+      </form>
+      <p id="assistant-status" role="status" aria-live="polite"></p>
+      <p id="assistant-reply" aria-live="polite"></p>
+      <details><summary>Ayuda local sin enviar preguntas</summary><p>Usá la navegación para abrir tus actividades. Podés elegir pictogramas en el comunicador para expresar una necesidad.</p></details>
+    </section>`;
+    const form = document.getElementById('assistant-form'), input = document.getElementById('assistant-message');
+    const status = document.getElementById('assistant-status'), reply = document.getElementById('assistant-reply'), send = document.getElementById('assistant-send');
+    const mode = document.getElementById('assistant-mode'), consent = document.getElementById('assistant-consent');
+    const modeLabel = document.getElementById('assistant-mode-label');
+    let consentVersion = null;
+    const capabilityController = new AbortController(); assistantCapabilitiesRequest = capabilityController;
+    const capabilityToken = session.token;
+    const capabilityTimer = setTimeout(() => capabilityController.abort(), 5000);
+    apiRequest('/api/assistant/capabilities', { signal: capabilityController.signal, cache: 'no-store' }).then(result => {
+      if (!form.isConnected || session?.token !== capabilityToken || assistantCapabilitiesRequest !== capabilityController) return;
+      const available = result.geminiAvailable === true && result.consentVersion === 'google-demo-v1';
+      mode.querySelector('[value="gemini"]').disabled = !available;
+      consentVersion = available ? result.consentVersion : null;
+      document.getElementById('assistant-availability').textContent = available ? 'Gemini disponible para esta cuenta ficticia. Elegí el modo y aceptá el aviso antes de enviar.' : 'Gemini no está habilitado para esta cuenta. Usá el modo simulado; la demo externa requiere una cuenta con correo .test o .invalid.';
+    }).catch(() => {
+      if (form.isConnected && session?.token === capabilityToken) document.getElementById('assistant-availability').textContent = 'No pudimos comprobar Gemini. El modo simulado sigue disponible.';
+    }).finally(() => { clearTimeout(capabilityTimer); if (assistantCapabilitiesRequest === capabilityController) assistantCapabilitiesRequest = null; });
+    mode.addEventListener('change', () => {
+      assistantRequest?.abort(); assistantRequest = null; consent.checked = false;
+      const external = mode.value === 'gemini'; consent.required = external;
+      document.getElementById('assistant-google-notice').hidden = !external;
+      modeLabel.textContent = external ? 'Demostración local: Gemini (Google)' : 'Demostración: respuestas simuladas';
+      reply.textContent = ''; status.textContent = ''; send.removeAttribute('aria-disabled'); form.removeAttribute('aria-busy');
+    });
+    form.querySelectorAll('textarea').forEach(field => field.addEventListener('input', () => field.setCustomValidity('')));
+    document.querySelectorAll('[data-assistant-question]').forEach(button => button.addEventListener('click', () => {
+      input.value = button.textContent; input.setCustomValidity(''); input.focus();
+    }));
+    document.getElementById('assistant-cancel').addEventListener('click', () => {
+      assistantRequest?.abort(); assistantRequest = null;
+      consent.checked = false;
+      input.value = ''; reply.textContent = ''; status.textContent = 'Solicitud cancelada. Podés escribir otra pregunta.';
+      send.removeAttribute('aria-disabled'); form.removeAttribute('aria-busy'); input.focus();
+    });
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (assistantRequest) return;
+      const external = mode.value === 'gemini';
+      if (external && (!consentVersion || !consent.checked)) { status.textContent = 'Aceptá el aviso antes de enviar a Google.'; consent.focus(); return; }
+      const message = input.value.trim();
+      if (!message || [...input.value].length > 800 || /@|\b(?:bearer|eyJ)[\w.-]*|(?:\d[\s()+-]*){7,}/i.test(message)) {
+        input.setCustomValidity('Escribí hasta 800 caracteres, sin datos personales ni credenciales.'); input.reportValidity(); return;
+      }
+      const controller = new AbortController(); assistantRequest = controller;
+      const token = session?.token;
+      const current = () => assistantRequest === controller && form.isConnected && session?.token === token;
+      send.setAttribute('aria-disabled', 'true'); form.setAttribute('aria-busy', 'true'); reply.textContent = ''; status.textContent = external ? 'Consultando a Gemini…' : 'Preparando respuesta simulada…';
+      const payload = external ? { message, mode: 'gemini', consent: consentVersion } : { message };
+      consent.checked = false;
+      const timer = setTimeout(() => controller.abort(), 16000);
+      try {
+        const result = await apiRequest('/api/assistant/messages', { method: 'POST', body: JSON.stringify(payload), signal: controller.signal, cache: 'no-store' });
+        if (!current()) return;
+        if (typeof result.reply !== 'string' || [...result.reply].length > (session.user.role === 'paciente' ? 400 : 700)) throw new Error('INVALID_REPLY');
+        reply.textContent = result.reply; status.textContent = external ? 'Respuesta de la demo lista. Puede incluir un mensaje local de límite; no se realizaron acciones.' : 'Respuesta simulada lista.';
+      } catch (error) {
+        if (!current()) return;
+        if (error.status === 401) { logoutSession('Tu sesión venció. Iniciá sesión nuevamente.'); return; }
+        status.textContent = error.status === 429 ? 'Alcanzaste un límite de uso. Esperá antes de volver a enviar.' : 'No pudimos responder. Podés usar la ayuda local e intentar más tarde.';
+      } finally {
+        clearTimeout(timer);
+        if (current()) { assistantRequest = null; send.removeAttribute('aria-disabled'); form.removeAttribute('aria-busy'); }
+      }
+    });
   }
   function renderLogin() { return `<main class="login-shell"><section class="login-card" aria-labelledby="login-title"><div class="brand-mark"><b aria-hidden="true">D</b><span>DECILO</span></div><p class="eyebrow" style="margin-top:28px">Comunicación que acompaña</p><h1 id="login-title">Un espacio para decir, practicar y compartir.</h1><p class="lead">Un MVP accesible para conectar la comunicación aumentativa con la práctica fonoaudiológica y el acompañamiento familiar.</p><form class="login-form" id="login-form"><fieldset style="border:0;padding:0;margin:0"><legend class="eyebrow">Elegí tu espacio</legend><div class="role-grid">${Object.entries(roleLabels).map(([role, label]) => `<button type="button" class="role-button" data-role="${role}" aria-pressed="${selectedRole === role}"><span class="role-icon" aria-hidden="true">${role === "profesional" ? "✦" : role === "paciente" ? "◉" : "⌂"}</span><strong>${label}</strong><span>${role === "profesional" ? "Configurar y acompañar" : role === "paciente" ? "Comunicar y practicar" : "Acompañar desde casa"}</span></button>`).join("")}</div></fieldset><label for="login-email">Correo de demostración<input id="login-email" name="email" type="email" value="${selectedRole === "profesional" ? "sofia@decilo.test" : selectedRole === "paciente" ? "mateo@decilo.test" : "carla@decilo.test"}" required /></label><label for="login-password">Clave<input id="login-password" name="password" type="password" value="decilo" required /></label><p class="hint">Demo local: la clave de los tres perfiles es <strong>decilo</strong>.</p><p id="login-message" class="message" role="alert"></p><button class="primary-button" type="submit">Entrar a DECILO</button></form></section></main>`; }
-  function renderApp() { const current = user(); return `<header class="topbar"><div class="brand-mark"><b aria-hidden="true">D</b><span>DECILO</span></div><div class="topbar-actions"><span class="session-label">${escapeHtml(current.name)} · ${roleLabels[current.role]}</span><span id="notifications-slot"></span><button class="icon-button" id="logout-button" title="Cerrar sesión" aria-label="Cerrar sesión">↪</button></div></header><div class="layout"><aside class="sidebar"><p class="eyebrow">Tu espacio</p><strong>${escapeHtml(current.name)}</strong><nav aria-label="Navegación principal">${navItems().map((item) => `<button class="nav-button" data-view="${item.id}" aria-current="${view === item.id ? "page" : "false"}">${item.label}</button>`).join("")}</nav><div class="section"><p class="hint">Los tableros y actividades se guardan en este dispositivo. Las notificaciones pertenecen a tu cuenta.</p></div></aside><main class="content">${renderView()}</main></div>`; }
+  function renderApp() { const current = user(); return `<header class="topbar"><div class="brand-mark"><b aria-hidden="true">D</b><span>DECILO</span></div><div class="topbar-actions"><span id="notifications-slot"></span><div class="account-zone" role="group" aria-label="Cuenta de usuario"><div class="account-info"><span class="session-label" title="${escapeHtml(current.name)}">${escapeHtml(current.name)}</span></div><button class="icon-button logout-button" id="logout-button" title="Cerrar sesión" aria-label="Cerrar sesión"><span class="logout-icon" aria-hidden="true">↪</span><span class="logout-text">Cerrar sesión</span></button></div></div></header><div class="layout"><aside class="sidebar"><p class="eyebrow">Tu espacio</p><strong>${escapeHtml(current.name)}</strong><nav aria-label="Navegación principal">${navItems().map((item) => `<button class="nav-button" data-view="${item.id}" aria-current="${view === item.id ? "page" : "false"}">${item.label}</button>`).join("")}</nav><div class="section"><p class="hint">Los tableros y actividades se guardan en este dispositivo. Las notificaciones pertenecen a tu cuenta.</p></div></aside><main class="content">${renderView()}</main></div>`; }
   function navItems() { if (session.role === "profesional") return [{ id: "inicio", label: "Resumen" }, { id: "pacientes", label: "Pacientes" }, { id: "tableros", label: "Tableros" }, { id: "actividades", label: "Actividades" }, { id: "progreso", label: "Progreso" }]; if (session.role === "paciente") return [{ id: "comunicador", label: "Mi comunicador" }, { id: "actividades", label: "Mis actividades" }, { id: "progreso", label: "Mis logros" }]; return [{ id: "inicio", label: "Seguimiento" }, { id: "actividades", label: "Actividades de hogar" }, { id: "progreso", label: "Comentarios" }]; }
   function heading(eyebrow, title, description, action = "") { return `<div class="page-heading"><div><p class="eyebrow">${eyebrow}</p><h1>${title}</h1><p>${description}</p></div>${action}</div>`; }
   function renderView() { if (view === "comunicador") return renderCommunicator(); if (view === "pacientes") return renderPatients(); if (view === "tableros") return renderBoards(); if (view === "actividades") return renderActivities(); if (view === "progreso") return renderProgress(); return renderHome(); }

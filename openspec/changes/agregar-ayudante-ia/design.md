@@ -8,6 +8,59 @@ Ayudar a entender funciones y formular frases como «Necesito descansar». Pacie
 
 ## Decisions
 
+### Alcance actualizado: Gemini para demo local (2026-10-05)
+
+Esta autorización amplía la primera etapa simulada sin completar producción.
+Se permite Gemini solo en la vista previa local aislada con cuentas ficticias:
+el backend exige correo .test o .invalid, rol paciente/familiar, activación
+GEMINI_DEMO_ENABLED=true y clave GEMINI_API_KEY presente únicamente en ejecución.
+El sufijo de correo no certifica anonimato; el aviso exige datos ficticios y
+aceptación explícita. El modo simulado sigue siendo el predeterminado y no llama
+a Google. No se envía nada al abrir la pantalla ni al consultar disponibilidad.
+
+Modelo elegido: gemini-3.5-flash-lite, estable, configurable por GEMINI_MODEL.
+La documentación consultada lista entrada/salida gratuitas en Standard y lo
+recomienda para proyectos nuevos frente al acceso restringido de los modelos
+2.5. No se garantiza cuota disponible ni gratuidad si el proyecto Google tiene
+facturación: usar exclusivamente un proyecto del nivel gratuito sin habilitar
+facturación. No hay cambio automático de modelo ni reintentos ante 429.
+
+Fuentes oficiales revisadas:
+- https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite
+- https://ai.google.dev/gemini-api/docs/pricing#gemini-3.5-flash-lite
+- https://ai.google.dev/gemini-api/docs/deprecations
+- https://ai.google.dev/api/generate-content
+- https://ai.google.dev/gemini-api/terms
+
+La API añade GET /api/assistant/capabilities autenticado/no-store, sin secretos,
+que informa disponibilidad y versión del aviso. POST admite message y, solo
+para Gemini, mode=gemini y consent=google-demo-v1; el backend rechaza envío sin
+esa aceptación. Campos adicionales siguen rechazados. La aceptación no se
+persiste y se limpia tras enviar, cancelar, cambiar modo o salir de la sesión.
+
+El aviso informa envío a Google de pregunta y guía pública por rol, uso del
+contenido para mejora de productos y posible revisión humana en el nivel
+gratuito. No afirmar que Google no conserva datos. Uso por adultos con datos
+ficticios; no es consentimiento de pacientes para producción.
+
+gemini-provider.js usa generateContent por HTTPS con x-goog-api-key, nunca clave
+en URL. Envía una pregunta y systemInstruction con guía pública del rol; no
+identidad, historial, archivos, herramientas, búsqueda, caché explícita ni datos
+de pacientes. Usa store=false sin prometer retención cero por Google. Se conserva
+8 KiB/800 caracteres, 256 tokens, timeout 15 s, cancelación y errores saneados.
+Límites de uso permanecen en memoria: esto NO completa cuotas durables ni
+presupuesto de producción. Consultas clínicas evidentes permanecen locales;
+salida inválida, HTML, enlaces o contenido clínico detectado reciben ayuda local.
+Estos filtros no garantizan clasificación clínica perfecta y requieren evaluación
+adicional antes de otro alcance. No se ejecutan acciones del modelo.
+
+Las secciones posteriores describen el objetivo completo; donde exigían esperar
+para todo proveedor externo, esta demo es la única excepción autorizada. Las
+pruebas usan fetch/proveedor mock y el runner elimina GEMINI_* heredadas. El
+adaptador bloquea fetch real dentro del runner. Ninguna prueba, healthcheck,
+build ni arranque hace inferencia. Clave inyectada en entorno de API, no en build
+args ni Dockerfile, excluida por .gitignore/.dockerignore y allowlist de dist.
+
 ### Interfaz y comportamiento
 
 Entrada «Ayudante» solo para paciente/familiar, identificada como IA que puede equivocarse. Botones con texto y área mínima 48×48 px, opciones locales «Cómo usar DECILO» y «Ayudarme a expresar una necesidad». Las sugerencias completan el campo y requieren envío explícito; no escriben en el comunicador ni guardan frases. Mostrar aviso de no introducir nombres, contactos, credenciales o información clínica antes de enviar. El texto libre puede contener datos personales voluntariamente escritos: no prometer anonimización infalible. Incorporar detección de patrones evidentes (tokens, correos, teléfonos) que rechace localmente y en backend; este filtro no sustituye la revisión de privacidad.

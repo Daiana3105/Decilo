@@ -343,3 +343,40 @@ Se realizó una auditoría de entrega HTTP mediante solicitudes contra el Static
   - Recursos mutables de entrada (`/`, `/index.html`, `/manifest.webmanifest`): exigen revalidación `no-cache` para descubrimiento oportuno de nuevas versiones, con `Content-Type: application/manifest+json` forzado para el manifest.
   - Íconos versionados (`/icons/*-v*.png`): al tener sufijos de versión inmutables (`-v1.png`), se define `Cache-Control: public, max-age=31536000, immutable` para eliminar peticiones redundantes y acelerar la carga en móviles sin riesgo de obsolescencia.
 - **Estado de tareas pendientes**: la tarea 5.1 permanece pendiente hasta contar con pruebas en dispositivo físico Android. La tarea 5.4 permanece pendiente hasta que los headers sean configurados en el Dashboard de Render y se confirme su efectividad por HTTP. La especificación OpenSpec `hacer-decilo-pwa-instalable` se mantiene activa y sin archivar.
+# Ayudante simulado: primera etapa
+
+## Extensión: Gemini en demo local
+
+`test/gemini-provider.test.js` usa únicamente fetch inyectado con respuestas
+sintéticas: payload mínimo, clave sintética en header, URL/modelo configurable,
+consentimiento backend, cuentas ficticias, 429, errores/bloqueos, tamaño,
+timeout y límites. No se hace inferencia externa ni se prueba una clave real.
+El runner elimina GEMINI_* heredadas y el adaptador bloquea fetch real cuando
+está presente la configuración del runner. Playwright intercepta capacidades
+y mensajes para comprobar aceptación por envío y limpieza al cambiar de sesión.
+
+Mantener pendientes la prueba manual consentida de Google, elegibilidad/cuota
+real del proyecto, evaluación de seguridad clínica y privacidad de producción,
+reservas persistentes y presupuesto. Verificar secretos sin imprimir valores:
+archivos versionables/índice y dist; imágenes exportadas y configuración de
+imagen. La clave solo puede estar en el entorno de la API en ejecución, no en
+build args ni capas. Los resultados de esta etapa se registran en tasks.md.
+
+`test/assistant.test.js` verifica mensajes y payload mínimo, roles, JWT vigente
+contra el repositorio de usuarios inyectado, CORS, parser 8 KiB, no-store,
+contadores minuto/día UTC, concurrencia, cancelación, timeout, errores saneados
+y rechazo de salida no predefinida. No usa proveedor real; fetch está bloqueado
+en la prueba del simulador. Los tests HTTP usan usuarios sintéticos inyectados;
+las regresiones generales mantienen la autenticación sobre PostgreSQL efímero.
+
+`e2e/assistant.spec.js` cubre paciente/familiar, sugerencias sin autoenvío, texto
+inerte, 320/768/1280 px, ampliación CSS 200%, foco, carga, error, cancelación y
+cambio de cuenta durante una respuesta. Verifica ausencia de conversaciones en
+localStorage/sessionStorage y rechazo del profesional también por API. No
+acredita revisión manual con lector de pantalla ni zoom nativo para este cambio.
+
+Ejecutar una vez y secuencialmente `npm.cmd test`,
+`npm.cmd run build:frontend`, `npm.cmd run test:frontend`; después OpenSpec
+estricto del cambio/global y `git diff --check`. No hacen inferencia externa ni
+consumen cuotas pagas. Persistencia/reinicio de reservas, presupuesto y proveedor
+real no están implementados ni se consideran validados en esta primera etapa.

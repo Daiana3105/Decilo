@@ -40,7 +40,7 @@ test("builds a public frontend bundle with safe API configuration", () => {
   assert.match(appSource, /window\.DECILO_CONFIG\?\.apiPublicUrl/);
 
   const publicSource = files.filter((name) => !name.endsWith(".png")).map((fileName) => fs.readFileSync(path.join(distDirectory, fileName), "utf8")).join("\n");
-  for (const forbidden of ["DATABASE_URL", "JWT_SECRET", "DB_PASSWORD", "server.js", "auth.js"]) {
+  for (const forbidden of ["DATABASE_URL", "JWT_SECRET", "DB_PASSWORD", "GEMINI_API_KEY", "gemini-provider.js", "server.js", "auth.js"]) {
     assert.equal(publicSource.includes(forbidden), false, `No debe publicar ${forbidden}`);
   }
 });

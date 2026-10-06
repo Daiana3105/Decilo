@@ -19,6 +19,11 @@ function loadConfig(env = process.env) {
     port: Number(env.PORT || 3000),
     jwtSecret,
     jwtExpiresIn: env.JWT_EXPIRES_IN || "1h",
+    assistant: {
+      enabled: Boolean(String(env.GEMINI_API_KEY || '').trim()) || env.GEMINI_DEMO_ENABLED === 'true',
+      apiKey: String(env.GEMINI_API_KEY || '').trim(),
+      model: String(env.GEMINI_MODEL || 'gemini-3.5-flash-lite').trim()
+    },
     corsOrigins: [...new Set([frontendPublicUrl, ...localFrontendUrls].filter(Boolean))],
     database: databaseUrl ? { connectionString: databaseUrl, max: Number(env.DB_POOL_MAX || 10) } : {
       host: env.DB_HOST,
