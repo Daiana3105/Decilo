@@ -8,6 +8,50 @@ const { createFamilyDemoService } = require('../family-demo');
 const { initializeFamilyDemo } = require('../family-demo-schema');
 const { createApp, createServer } = require('../server');
 const { signToken } = require('../auth');
+test('activity removal requires current professional authorization and preserves history after restart', async t => {
+  const { db,a,b,service,app,auth,link,config,options } = await setup(t);
+  await link();
+  const patient=a.patient1.id;
+  const {activity}=await service.assign(a.professional,patient,{title:'Retirable',instruction:'Demo',availability:'Hogar',points:25});
+  await service.complete(a.patient1,patient,activity.id);
+  await service.comment(a.family,patient,{text:'Comentario conservado',activityId:activity.id});
+  const before=await service.summary(a.family,patient);
+  const path=`/api/family-demo/patients/${patient}/activities/${activity.id}`;
+  await request(app).delete(path).expect(401);
+  for(const actor of [a.patient1,a.family,b.professional]) await request(app).delete(path).set(auth(actor)).expect(404);
+  await request(app).delete(`/api/family-demo/patients/${a.patient2.id}/activities/${activity.id}`).set(auth(a.professional)).expect(404);
+  await request(app).delete(path).set(auth(a.professional)).expect(204);
+  const snapshot=(await db.query('SELECT * FROM patient_activities WHERE id=$1',[activity.id])).rows[0];
+  assert.ok(snapshot.removed_at); assert.equal(snapshot.removed_by,a.professional.id);
+  await request(app).delete(path).set(auth(a.professional)).expect(204);
+  await initializeFamilyDemo(db,options.marker);
+  const restarted=createFamilyDemoService(db,config.familyDemo);
+  assert.deepEqual((await db.query('SELECT * FROM patient_activities WHERE id=$1',[activity.id])).rows[0],snapshot);
+  for(const actor of [a.professional,a.patient1,a.family]) {
+    assert.ok(!(await restarted.list(actor,patient,{})).activities.some(row=>row.id===activity.id));
+  }
+  const after=await restarted.summary(a.family,patient);
+  assert.equal(after.assigned,before.assigned); assert.equal(after.completed,before.completed);
+  assert.equal(after.points,before.points); assert.equal(after.completionPercent,before.completionPercent);
+  assert.equal(after.activeAssigned,before.activeAssigned-1); assert.equal(after.activeCompleted,before.activeCompleted-1);
+  assert.ok((await restarted.comments(a.family,patient,{})).comments.some(row=>row.text==='Comentario conservado'));
+  assert.equal((await db.query('SELECT count(*) FROM patient_deliveries WHERE activity_id=$1',[activity.id])).rows[0].count,'1');
+  await assert.rejects(restarted.complete(a.patient1,patient,activity.id),{status:404});
+});
+test('removed pending activities cannot be completed and revoked professionals cannot remove',async t=>{
+  const {db,a,service}=await setup(t),patient=a.patient1.id;
+  const {activity}=await service.assign(a.professional,patient,{title:'Pendiente',instruction:'Demo',availability:'Hogar',points:10});
+  const before=await service.summary(a.patient1,patient);
+  await db.query('UPDATE professional_patient_links SET active=FALSE WHERE professional_id=$1 AND patient_id=$2',[a.professional.id,patient]);
+  await assert.rejects(service.removeActivity(a.professional,patient,activity.id),{status:404});
+  assert.equal((await db.query('SELECT removed_at FROM patient_activities WHERE id=$1',[activity.id])).rows[0].removed_at,null);
+  await db.query('UPDATE professional_patient_links SET active=TRUE WHERE professional_id=$1 AND patient_id=$2',[a.professional.id,patient]);
+  await service.removeActivity(a.professional,patient,activity.id);
+  await assert.rejects(service.complete(a.patient1,patient,activity.id),{status:404});
+  const after=await service.summary(a.patient1,patient);
+  assert.equal(after.activeAssigned-after.activeCompleted,before.activeAssigned-before.activeCompleted-1);
+  assert.equal((await db.query('SELECT count(*) FROM patient_deliveries WHERE activity_id=$1',[activity.id])).rows[0].count,'0');
+});
 async function setup(t) {
   const fixture = await isolatedDatabase(); t.after(() => fixture.close());
   const db = fixture.database, marker = randomBytes(16).toString('hex');

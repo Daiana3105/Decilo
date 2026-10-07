@@ -18,6 +18,11 @@ async function initializeFamilyDemo(database, marker) {
       CREATE TABLE IF NOT EXISTS professional_patient_links (
         professional_id INTEGER REFERENCES users(id), patient_id INTEGER REFERENCES users(id),
         active BOOLEAN NOT NULL DEFAULT TRUE, PRIMARY KEY (professional_id, patient_id));
+      CREATE TABLE IF NOT EXISTS demo_patient_details (
+        patient_id INTEGER NOT NULL REFERENCES users(id), professional_id INTEGER NOT NULL REFERENCES users(id),
+        first_name TEXT NOT NULL CHECK(length(first_name) BETWEEN 1 AND 80),
+        last_name TEXT NOT NULL CHECK(length(last_name) BETWEEN 1 AND 80),
+        contact TEXT CHECK(length(contact)<=160), PRIMARY KEY(patient_id,professional_id));
       CREATE TABLE IF NOT EXISTS family_patient_links (
         patient_id INTEGER REFERENCES users(id), family_id INTEGER REFERENCES users(id),
         professional_id INTEGER NOT NULL REFERENCES users(id), active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -33,6 +38,8 @@ async function initializeFamilyDemo(database, marker) {
         patient_id INTEGER NOT NULL REFERENCES users(id), professional_id INTEGER NOT NULL REFERENCES users(id),
         title TEXT NOT NULL, instruction TEXT NOT NULL, availability TEXT NOT NULL CHECK (availability IN ('Hogar','Consulta')),
         points INTEGER NOT NULL CHECK (points BETWEEN 0 AND 100), UNIQUE(id,patient_id));
+      ALTER TABLE patient_activities ADD COLUMN IF NOT EXISTS removed_at TIMESTAMPTZ;
+      ALTER TABLE patient_activities ADD COLUMN IF NOT EXISTS removed_by INTEGER REFERENCES users(id);
       CREATE TABLE IF NOT EXISTS patient_deliveries (
         activity_id BIGINT PRIMARY KEY, patient_id INTEGER NOT NULL, author_id INTEGER NOT NULL REFERENCES users(id),
         origin TEXT NOT NULL, points INTEGER NOT NULL, completed_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,

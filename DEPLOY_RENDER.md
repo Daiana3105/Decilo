@@ -265,3 +265,8 @@ juntos HTML, manifest e imágenes de la misma versión y revisar sus headers; no
 elimina accesos instalados ni datos. Comprobar por HTTPS los recursos existentes,
 404 de faltantes, ETag/Last-Modified, revalidación y ausencia de contenido mixto.
 Estas instrucciones no acreditan ejecución ni completan tareas pendientes.
+# Preparación de demo pública (2026-10-07)
+
+Para los cambios pendientes y las restricciones actuales, consultar
+[RENDER_RELEASE_CHECKLIST.md](RENDER_RELEASE_CHECKLIST.md). Es preparación, no
+evidencia de despliegue. No ejecutar seed ni copiar la base local a Render.

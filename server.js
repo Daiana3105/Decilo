@@ -39,7 +39,7 @@ function createApp({ config = loadConfig(), database, users = createUserReposito
     next();
   });
   app.use('/api/assistant', createAssistantRouter({ authenticate: authMiddleware(database, config, users),
-    service: assistantService || createAssistantService({ geminiProvider: createGeminiProvider(config.assistant) }) }));
+    service: assistantService || createAssistantService({ geminiProvider: createGeminiProvider(config.assistant), allowedUserIds: config.assistant?.allowedUserIds }) }));
   app.use('/api/family-demo', createFamilyDemoRouter({ authenticate: authMiddleware(database, config, users),
     service: createFamilyDemoService(database, { ...config.familyDemo, publish, logger }) }));
   app.use(express.json({ limit: "32kb" }));
@@ -107,7 +107,7 @@ function createApp({ config = loadConfig(), database, users = createUserReposito
 
   app.use((error, _request, response, _next) => {
     if (error instanceof SyntaxError && error.status === 400 && "body" in error) return response.status(400).json({ error: "INVALID_JSON", message: "La solicitud no contiene JSON válido." });
-    console.error(error);
+    safeLog(logger, "request", randomUUID());
     return response.status(500).json({ error: "INTERNAL_ERROR", message: "Ocurrió un error inesperado." });
   });
 
@@ -117,7 +117,12 @@ function createApp({ config = loadConfig(), database, users = createUserReposito
 async function createServer({ config = loadConfig(), database, logger, notificationService, loginNotifications } = {}) {
   const ownsDatabase = !database;
   database = database || await createDatabase(config.database);
-  if (config.familyDemo?.enabled) await initializeFamilyDemo(database, config.familyDemo.marker);
+  try {
+    if (config.familyDemo?.enabled) await initializeFamilyDemo(database, config.familyDemo.marker);
+  } catch (error) {
+    if (ownsDatabase) await database.end();
+    throw error;
+  }
   // Separate, bounded pool prevents slow secondary writes from taking all auth connections.
   const backgroundDatabase = config.database ? createPool({ ...config.database, max: 2,
     connectionTimeoutMillis: 1000, statement_timeout: 5000, idle_in_transaction_session_timeout: 10000 }) : null;
@@ -152,7 +157,7 @@ if (require.main === module) {
     server.httpServer.listen(config.port, () => console.log(`DECILO API escuchando en http://localhost:${config.port}`));
     for (const signal of ["SIGINT", "SIGTERM"]) process.once(signal, () => { server.close().catch(() => { process.exitCode = 1; }); });
   })().catch((error) => {
-    console.error(error.message);
+    console.error('API_STARTUP_FAILED: revisar configuración y disponibilidad de PostgreSQL');
     process.exitCode = 1;
   });
 }

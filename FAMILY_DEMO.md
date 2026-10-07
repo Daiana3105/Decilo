@@ -1,5 +1,11 @@
 # Demo familiar aislada
 
+Actualización 2026-10-07: se preparó un modo público explícito para Render,
+sin habilitarlo ni desplegar. Requiere marcador preexistente, miembros ficticios
+y vínculos acreditados; no elimina las restricciones ni crea consentimientos.
+Ver [checklist de publicación](RENDER_RELEASE_CHECKLIST.md). Las instrucciones
+locales siguientes no autorizan ejecutar el seed en Render.
+
 Solo cuentas y datos ficticios. No acredita relaciones clínicas reales ni resuelve
 consentimiento o representación. No importar `localStorage`.
 

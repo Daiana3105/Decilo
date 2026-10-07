@@ -6,9 +6,19 @@ const { createAssistantService } = require('../assistant');
 const { createApp } = require('../server');
 const { signToken } = require('../auth');
 const user = { id: 1, rol: 'paciente', email: 'demo@example.test', nombre: 'private-name' };
-const body = { message: 'Dónde busco la actividad', mode: 'gemini', consent: GOOGLE_CONSENT };
+const body = { message: 'Dónde busco la actividad', mode: 'gemini', consent: GOOGLE_CONSENT, demoAdultConfirmed: true };
 const fakeKey = 'synthetic-gemini-test-value-not-a-real-key';
 const goodResponse = () => new Response(JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: 'Abrí Mis actividades en el menú.' }] } }] }));
+test('public Gemini requires an explicitly allowed fictional identity and age confirmation',async()=>{
+  let calls=0;
+  const geminiProvider=createGeminiProvider({enabled:true,apiKey:fakeKey,fetchImpl:async()=>{calls++;return goodResponse();}});
+  const service=createAssistantService({geminiProvider,allowedUserIds:['1']});
+  for(const denied of [{...user,id:2},{...user,email:'demo@decilo.com'}]) await assert.rejects(service.reply(denied,body),{status:503});
+  await assert.rejects(service.reply(user,{...body,demoAdultConfirmed:undefined}),{status:400});
+  await assert.rejects(createAssistantService({geminiProvider,allowedUserIds:[]}).reply(user,body),{status:503});
+  assert.equal(calls,0);
+  await service.reply(user,body); assert.equal(calls,1);
+});
 
 test('Gemini sends only one question and public role guide, key in header, fixed endpoint', async () => {
   for (const rol of ['paciente', 'familiar']) {
@@ -20,10 +30,10 @@ test('Gemini sends only one question and public role guide, key in header, fixed
     assert.equal(captured.options.redirect, 'error');
     assert.ok(captured.options.signal instanceof AbortSignal);
     const payload = JSON.parse(captured.options.body);
-    assert.deepEqual(Object.keys(payload).sort(), ['contents', 'generationConfig', 'store', 'systemInstruction']);
+    assert.deepEqual(Object.keys(payload).sort(), ['contents', 'generationConfig', 'systemInstruction']);
     assert.deepEqual(payload.contents, [{ role: 'user', parts: [{ text: body.message }] }]);
     assert.match(payload.systemInstruction.parts[0].text, rol === 'paciente' ? /Mi comunicador, Mis actividades/ : /Seguimiento, Actividades de hogar/);
-    assert.equal(payload.generationConfig.maxOutputTokens, 256); assert.equal(payload.store, false);
+    assert.equal(payload.generationConfig.maxOutputTokens, 256);
     for (const secret of [fakeKey, user.email, user.nombre, 'JWT_SECRET']) assert.equal(captured.options.body.includes(secret), false);
     assert.equal(captured.options.headers.Authorization, undefined);
   }

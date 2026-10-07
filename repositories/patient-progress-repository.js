@@ -1,6 +1,8 @@
 function createPatientProgressRepository(db) {
   return {
     summary: async (patient, homeOnly) => (await db.query(`SELECT count(*)::int AS assigned,count(d.activity_id)::int AS completed,
+      count(*) FILTER(WHERE a.removed_at IS NULL)::int AS "activeAssigned",
+      count(d.activity_id) FILTER(WHERE a.removed_at IS NULL)::int AS "activeCompleted",
       COALESCE(sum(d.points),0)::int AS points FROM patient_activities a LEFT JOIN patient_deliveries d ON d.activity_id=a.id
       WHERE a.patient_id=$1 AND (NOT $2 OR a.availability='Hogar')`, [patient, homeOnly])).rows[0],
     comments: async (patient, homeOnly, before, limit) => (await db.query(`SELECT c.id,c.text,c.created_at AS "createdAt",u.nombre AS "authorName"

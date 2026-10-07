@@ -21,8 +21,7 @@ function createGeminiProvider({ enabled = false, apiKey = '', model = DEFAULT_MO
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: `${RULES}\n${GUIDES[audience]}` }] },
           contents: [{ role: 'user', parts: [{ text: message }] }],
-          generationConfig: { maxOutputTokens: Math.min(maxOutputTokens, 256), candidateCount: 1, responseMimeType: 'text/plain' },
-          store: false
+          generationConfig: { maxOutputTokens: Math.min(maxOutputTokens, 256), candidateCount: 1, responseMimeType: 'text/plain' }
         })
       });
       if (!response.ok) {

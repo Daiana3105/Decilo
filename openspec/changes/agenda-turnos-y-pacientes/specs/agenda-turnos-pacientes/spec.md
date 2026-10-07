@@ -159,3 +159,17 @@ El sistema MUST guardar perfiles, permisos, turnos y eventos de auditoría en Po
 #### Scenario: Migración sobre base existente
 - **WHEN** se inicializa por primera vez o repetidamente una base con usuarios y notificaciones
 - **THEN** aparecen las nuevas tablas/índices y tipos de aviso sin borrar, recrear o reordenar los datos anteriores
+### Requirement: Etapa m?nima exclusivamente ficticia
+La etapa local de demo MUST limitar fichas y turnos a miembros ficticios verificados y v?nculos vigentes de PostgreSQL; MUST NOT crear cuentas, importar permisos locales ni acreditar consentimiento productivo. MUST permitir agregar/editar nombre, apellido y contacto ficticio opcional y consultar un calendario mensual por paciente. MUST crear y cancelar turnos de 15?180 minutos con locks y UoW, rechazando superposiciones profesionales y del paciente. Los requisitos productivos anteriores quedan pendientes fuera de esta etapa; la excepci?n MUST NOT habilitar acceso real.
+
+#### Scenario: Reserva ficticia concurrente
+- **WHEN** dos profesionales autorizados reservan simult?neamente el mismo paciente y horario
+- **THEN** una sola reserva confirma y la otra recibe conflicto sin escritura parcial
+
+#### Scenario: Cuenta ajena o v?nculo revocado
+- **WHEN** una cuenta no ficticia o un familiar sin v?nculo vigente consulta turnos
+- **THEN** se rechaza sin datos, contactos ni fallback local
+
+#### Scenario: Consulta mensual y cancelaci?n
+- **WHEN** el profesional crea un turno del paciente ficticio vinculado y luego lo cancela
+- **THEN** la fila persiste como cancelada y el paciente o familiar autorizado la consulta sin poder modificarla

@@ -100,3 +100,15 @@ La demo MUST conservar el modo simulado predeterminado y claramente identificado
 #### Scenario: Distribución de secretos
 - **WHEN** se construye el frontend o la imagen Docker
 - **THEN** la clave no aparece en archivos Git, dist, capas o configuración de imagen; solo se inyecta a la API en ejecución
+
+
+### Requirement: Acceso externo en demo pública restringida
+En entorno alojado el sistema MUST exigir habilitación explícita y una lista privada de IDs de pacientes/familiares ficticios autorizados para Gemini. MUST validar JWT, rol actual, correo reservado .test/.invalid, confirmación de mayoría de edad para la demo y consentimiento explícito antes de transmitir. MUST NOT permitir acceso externo por solo registrar un correo ficticio, ni transmitir edad, IDs o JWT al proveedor. La clave MUST permanecer exclusivamente en la API; el simulador MUST seguir disponible.
+
+#### Scenario: Cuenta ficticia no autorizada
+- **WHEN** una cuenta registrada usa dominio de prueba pero no pertenece a la lista permitida
+- **THEN** Gemini se rechaza antes de llamar al proveedor y el simulador permanece disponible
+
+#### Scenario: Preparación sin clave ni configuración remota verificadas
+- **WHEN** no se verificaron las variables privadas y una respuesta real del proveedor en Render
+- **THEN** la documentación conserva esa validación pendiente y no afirma que Gemini público fue probado

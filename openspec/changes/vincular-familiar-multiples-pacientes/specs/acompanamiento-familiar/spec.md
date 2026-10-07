@@ -173,3 +173,15 @@ Las rutas nuevas MUST conservar JWT/roles existentes, usar no-store y errores sa
 #### Scenario: Uso del ayudante tras seleccionar paciente
 - **WHEN** un familiar abre el ayudante con un paciente seleccionado
 - **THEN** no se agrega información de ese paciente a la pregunta o guía enviada al proveedor
+
+
+### Requirement: Preparación de demo pública sin importar datos locales
+La demo pública MUST activarse explícitamente, mantener el marcador de base preexistente y revalidar membresía ficticia, rol y vínculos PostgreSQL. El arranque MUST aplicar solo DDL aditivo y MUST NOT crear cuentas, vínculos o seed ni importar localStorage o la base local. Las políticas para usuarios reales MUST permanecer pendientes.
+
+#### Scenario: Base no acreditada
+- **WHEN** se activa la demo pública sin un marcador válido y coincidente
+- **THEN** la API no habilita la demo ni crea automáticamente un marcador o miembros
+
+#### Scenario: Cuenta fuera de la fixture
+- **WHEN** una cuenta sin membresía ficticia intenta acceder a pacientes o relaciones
+- **THEN** el backend rechaza aunque el frontend o el correo parezcan de demostración

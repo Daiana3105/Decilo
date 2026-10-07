@@ -81,3 +81,13 @@ La interfaz conserva solo selección efímera de vista; datos y formularios se r
 - [Datos sensibles en avisos/auditoría] → Plantillas genéricas, auditoría de nombres de campos y no valores, DTO mínimos, `no-store` y pruebas de ausencia de secretos.
 - [Rollback con tipos de aviso nuevos] → Mantener esquema aditivo y usar versión API compatible; no revertir DDL ni eliminar datos.
 - [Cuentas paciente preexistentes] → El módulo no resuelve creación de credenciales/identidad ni recuperación; el alta de cuenta sigue el flujo de autenticación existente.
+
+## Etapa m?nima de demo autorizada
+
+Esta entrega se limita al entorno local protegido por FAMILY_DEMO y su marcador, a miembros ficticios registrados en backend y a v?nculos activos. No habilita pacientes reales, no crea cuentas ni concede consentimiento. En Pacientes se agregan/editan fichas de cuentas ficticias ya vinculadas: nombre, apellido y contacto opcional ficticio; sin DNI, diagn?stico ni historia cl?nica. La ficha queda separada por profesional y paciente en demo_patient_details; no modifica identidad ni credenciales.
+
+Agenda mensual por paciente: crear turnos pendientes y cancelar conservando filas, sin edici?n, confirmaci?n, recurrencias, recordatorios ni emails. Horario fijo de Buenos Aires (UTC?3); duraci?n 15?180 minutos en m?ltiplos de cinco. Reutiliza appointments, repositorios, locks ordenados de usuarios y una conexi?n UoW. Los intervalos son semiabiertos y se comprueban conflictos del profesional y del paciente dentro de la misma transacci?n.
+
+Cada solicitud verifica fixture y v?nculos en PostgreSQL. Profesionales ven solo turnos propios; pacientes solo los propios; familiares solo los del paciente vinculado y del profesional que autoriz? su v?nculo vigente. Revocaci?n corta nuevas consultas. Contacto de ficha es exclusivo del profesional. No se a?ade almacenamiento de agenda en navegador ni se env?a a Gemini.
+
+El alcance productivo de consentimiento profesional y permiso familiar separado de agenda permanece pendiente: los v?nculos ficticios no equivalen a consentimiento cl?nico. Se mantienen pendientes altas reales, consentimiento/representaci?n, archivo, auditor?a productiva, estados adicionales, configuraci?n de zona, vistas diaria/semanal y avisos. No se deben habilitar estas rutas fuera de la demo ficticia.

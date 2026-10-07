@@ -1,0 +1,25 @@
+const {test,expect}=require('./fixtures');
+test('login shows progress, rejects duplicate submits and enters without notifications, socket or Gemini',async({page,stack})=>{
+  let release;
+  const gate=new Promise(resolve=>{release=resolve;});
+  let requests=0;
+  await page.route('**/api/auth/login',async route=>{requests++;await gate;await route.continue();});
+  await page.route('**/api/notifications**',route=>route.abort());
+  await page.route('**/socket.io/**',route=>route.abort());
+  let geminiCalls=0;
+  await page.route('**/api/assistant/**',route=>{geminiCalls++;return route.abort();});
+  await page.goto(stack.url);
+  await page.locator('[data-role="paciente"]').click();
+  await page.getByLabel('Correo electrónico',{exact:true}).fill(stack.users.paciente.email);
+  await page.getByLabel('Contraseña',{exact:true}).fill('browser-test-password');
+  await page.getByRole('button',{name:'Entrar a DECILO',exact:true}).click();
+  await expect(page.locator('#login-form')).toHaveAttribute('aria-busy','true');
+  await expect(page.locator('#login-message')).toContainText('Ingresando');
+  await page.locator('#login-form').evaluate(form=>{form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));});
+  await expect.poll(()=>requests).toBe(1);
+  const loginResponse=page.waitForResponse(r=>r.url().endsWith('/api/auth/login'));
+  const start=Date.now();release();await loginResponse;const responseAt=Date.now();
+  await expect(page.locator('#logout-button')).toBeVisible();
+  console.log(JSON.stringify({phase:'local-browser-login',httpMs:responseAt-start,postLoginUiMs:Date.now()-responseAt,geminiCalls}));
+  expect(requests).toBe(1);expect(geminiCalls).toBe(0);
+});

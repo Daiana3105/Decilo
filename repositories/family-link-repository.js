@@ -3,9 +3,9 @@ function createFamilyLinkRepository(db) {
     // One per-patient lock shared by all reads and mutations prevents revoke/write races.
     lockPatient: id => db.query('SELECT id FROM users WHERE id=$1 FOR UPDATE', [id]),
     member: async id => (await db.query(`SELECT u.* FROM users u JOIN family_demo_members m ON m.user_id=u.id
-      WHERE u.id=$1 AND u.rol=m.expected_role AND u.email=m.expected_email`, [id])).rows[0],
+      WHERE u.id=$1 AND u.rol=m.expected_role AND u.email=m.expected_email AND lower(u.email) ~ '[.](test|invalid)$'`, [id])).rows[0],
     byEmail: async email => (await db.query(`SELECT u.* FROM users u JOIN family_demo_members m ON m.user_id=u.id
-      WHERE u.email=$1 AND u.rol=m.expected_role AND u.email=m.expected_email`, [email])).rows[0],
+      WHERE u.email=$1 AND u.rol=m.expected_role AND u.email=m.expected_email AND lower(u.email) ~ '[.](test|invalid)$'`, [email])).rows[0],
     professional: async (actor, patient) => (await db.query(`SELECT 1 FROM professional_patient_links
       WHERE professional_id=$1 AND patient_id=$2 AND active`, [actor, patient])).rowCount > 0,
     family: async (actor, patient) => (await db.query(`SELECT 1 FROM family_patient_links f
@@ -14,7 +14,7 @@ function createFamilyLinkRepository(db) {
       WHERE f.family_id=$1 AND f.patient_id=$2 AND f.active AND p.active
       AND u.rol='profesional' AND u.rol=m.expected_role AND u.email=m.expected_email`, [actor, patient])).rowCount > 0,
     patients: async actor => (await db.query(`SELECT DISTINCT u.id::text AS id,u.nombre AS name FROM users u
-      JOIN family_demo_members m ON m.user_id=u.id WHERE u.rol='paciente' AND u.rol=m.expected_role AND u.email=m.expected_email
+      JOIN family_demo_members m ON m.user_id=u.id WHERE u.rol='paciente' AND u.rol=m.expected_role AND u.email=m.expected_email AND lower(u.email) ~ '[.](test|invalid)$'
       AND (u.id=$1 OR EXISTS(SELECT 1 FROM professional_patient_links p WHERE p.professional_id=$1 AND p.patient_id=u.id AND p.active)
         OR EXISTS(SELECT 1 FROM family_patient_links f JOIN professional_patient_links p
           ON p.patient_id=f.patient_id AND p.professional_id=f.professional_id

@@ -21,3 +21,10 @@ Ninguna: endpoint nuevo aditivo; contratos de autenticación, comunicación y no
 ## Impact
 
 La implementación agrega servicio/adaptador backend y ruta autenticada, interfaz en app.js/styles.css, configuración privada y pruebas. Docker API incluye los módulos, sin secretos en la imagen. La persistencia técnica de cuotas sigue pendiente para producción, sin mensajes ni cambios a tablas clínicas o contratos actuales. No modifica PWA, Socket.IO ni el flujo de login. Esta etapa autoriza únicamente actualizar la demo local aislada, sin commit, push ni despliegue externo.
+## Preparación de demo pública — 2026-10-07
+
+Alcance autorizado: preparar Render, sin publicar todavía. Gemini requiere
+habilitación explícita, clave privada de API y lista de IDs ficticios autorizados,
+además de JWT, rol, dominio reservado, confirmación de edad y consentimiento.
+El simulador se conserva. No acredita producción ni resuelve las políticas/cuotas
+durables pendientes. Ver `RENDER_RELEASE_CHECKLIST.md`.

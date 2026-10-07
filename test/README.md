@@ -1,5 +1,13 @@
 # Pruebas de backend
 
+Preparación Render 2026-10-07: `release-startup.test.js` mide arranque local y
+login válido con bcrypt coste 12 mientras una tarea secundaria sigue bloqueada.
+`login-loading.spec.js` comprueba carga visible, ausencia de doble envío y entrada
+con notificaciones/Socket.IO indisponibles, sin consultar Gemini. Configuración y
+Gemini prueban opt-in público, lista de IDs ficticios y edad/consentimiento con mock.
+No se consume Google ni se conecta a una base existente. Resultados finales en
+[RENDER_RELEASE_CHECKLIST.md](../RENDER_RELEASE_CHECKLIST.md).
+
 ## Repository y Unit of Work (issue #17)
 
 Los repositorios reciben un ejecutor inyectado y conservan SQL parametrizado,

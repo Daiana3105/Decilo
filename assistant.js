@@ -30,19 +30,22 @@ const simulatedProvider = Object.freeze({
   }
 });
 
-function createAssistantService({ provider = simulatedProvider, geminiProvider, now = Date.now, timeoutMs = 15000 } = {}) {
+function createAssistantService({ provider = simulatedProvider, geminiProvider, allowedUserIds = null, now = Date.now, timeoutMs = 15000 } = {}) {
   if (provider.kind !== 'simulated') throw new Error('Only the simulated assistant is available');
   const quotas = new Map(), busy = new Set();
   return {
     capabilities(user) {
-      return { geminiAvailable: Boolean(geminiProvider?.available && ['paciente', 'familiar'].includes(user.rol) && /^[^@\s]+@(?:[^@\s]+\.(test|invalid)|(?:[^@\s]+\.)?decilo\.(?:test|com))$/i.test(user.email || '')), consentVersion: GOOGLE_CONSENT };
+      return { geminiAvailable: Boolean(geminiProvider?.available && ['paciente', 'familiar'].includes(user.rol) &&
+        (allowedUserIds === null || allowedUserIds.includes(String(user.id))) &&
+        /^[^@\s]+@[^@\s]+\.(test|invalid)$/i.test(user.email || '')), consentVersion: GOOGLE_CONSENT };
     },
     async reply(user, body, signal) {
       if (!['paciente', 'familiar'].includes(user.rol)) throw new AssistantError(403, 'ASSISTANT_FORBIDDEN', 'El ayudante es para pacientes y familiares.');
-      if (!body || Array.isArray(body) || Object.keys(body).some(key => !['message', 'mode', 'consent'].includes(key)) || typeof body.message !== 'string') throw invalid();
+      if (!body || Array.isArray(body) || Object.keys(body).some(key => !['message', 'mode', 'consent', 'demoAdultConfirmed'].includes(key)) || typeof body.message !== 'string') throw invalid();
       const mode = body.mode ?? 'simulated';
       if (!['simulated', 'gemini'].includes(mode)) throw invalid();
       if (mode === 'gemini') {
+        if (body.demoAdultConfirmed !== true) throw new AssistantError(400, 'ASSISTANT_DEMO_AGE_REQUIRED', 'Confirmá el requisito de edad para acceder a la demo Gemini.');
         if (body.consent !== GOOGLE_CONSENT) throw new AssistantError(400, 'ASSISTANT_CONSENT_REQUIRED', 'Aceptá el envío a Google antes de enviar.');
         if (!this.capabilities(user).geminiAvailable) throw new AssistantError(503, 'ASSISTANT_UNAVAILABLE', 'Gemini no está habilitado para esta cuenta de demostración. Podés usar el modo simulado.');
       }

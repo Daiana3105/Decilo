@@ -77,3 +77,10 @@ Playwright completo: 49 regresiones aprobadas y dos pruebas nuevas inicialmente 
 - 4.3: permisos, IDs cruzados, actor extra y 404 indistinguibles comprobados; falta ampliar los casos HTTP de cursores manipulados/paginación extrema y fallo de dependencia. La tarea agrupada permanece pendiente por esa cobertura adicional.
 - 4.6: comprobación automatizada móvil/teclado/zoom realizada; aceptación visual y lector de pantalla manual de este nuevo flujo todavía pendientes.
 - Uso real: acreditación profesional-paciente, consentimiento, representación, facultades de revocación y límites durables siguen pendientes; documentarlos (1.2) no significa resolverlos ni autorizar producción.
+## Preparación Render — 2026-10-07
+
+Modo público explícito preparado, no desplegado: preserva marcador, membresía y
+vínculos. `scripts/render-demo-preflight.js` solo lee; no se ejecutó sobre Render.
+No se copió la base ni se ejecutó seed. Sigue pendiente comprobar la acreditación
+de cuentas/vínculos remotos antes de habilitarlo, además de las políticas de uso
+real y cobertura/manuales ya indicadas. Evidencia final en `RENDER_RELEASE_CHECKLIST.md`.

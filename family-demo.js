@@ -1,6 +1,7 @@
 const express = require('express');
 const { randomBytes, createHash } = require('node:crypto');
 const { createUnitOfWork } = require('./unit-of-work');
+const { createDemoAgenda } = require('./demo-agenda');
 const { verifyDemo } = require('./family-demo-schema');
 const { createFamilyLinkRepository } = require('./repositories/family-link-repository');
 const { createPatientActivityRepository } = require('./repositories/patient-activity-repository');
@@ -48,7 +49,7 @@ function createFamilyDemoService(database, { enabled = false, marker, publish = 
       if (!user || user.rol !== actor.rol) throw new FamilyError(403);
       const events = [];
       const notify = (type, source, recipients) => events.push({ type, source, recipients });
-      const result = await operation({ user, links, notify, boards: createPatientBoardRepository(client), activities: createPatientActivityRepository(client), progress: createPatientProgressRepository(client) });
+      const result = await operation({ client, user, links, notify, boards: createPatientBoardRepository(client), activities: createPatientActivityRepository(client), progress: createPatientProgressRepository(client) });
       const updates = await persistAccompanimentNotifications(client, events, user.id, logger);
       return { result, updates };
     });
@@ -70,6 +71,7 @@ function createFamilyDemoService(database, { enabled = false, marker, publish = 
     return member?.rol === 'profesional' && await ctx.links.professional(professional, patient) ? [professional] : [];
   }
   return {
+    ...createDemoAgenda({ run, access, id, bigId, fields, ErrorType: FamilyError }),
     async capabilities(actor) {
       if (!enabled) return { enabled: false };
       await verifyDemo(database, marker);
@@ -151,6 +153,11 @@ function createFamilyDemoService(database, { enabled = false, marker, publish = 
       const rows = await ctx.activities.list(patient, actor.rol === 'familiar', before, limit + 1);
       return { activities: rows.slice(0, limit), nextCursor: rows.length > limit ? rows[limit - 1].id : null };
     }),
+    removeActivity: (actor, patientId, activityId) => run(actor, async ctx => {
+      const patient = id(patientId); await access(ctx, patient, true);
+      if (!await ctx.activities.remove(patient, bigId(activityId), actor.id)) throw new FamilyError();
+      return {};
+    }),
     assign: (actor, patientId, body) => run(actor, async ctx => {
       fields(body, ['title', 'instruction', 'availability', 'points']);
       if (typeof body.title !== 'string' || !body.title.trim() || body.title.length > 120 || typeof body.instruction !== 'string' ||
@@ -211,6 +218,11 @@ function createFamilyDemoRouter({ authenticate, service }) {
   };
   router.get('/capabilities', route(r => service.capabilities(r.user)));
   router.get('/patients', route(r => service.patients(r.user)));
+  router.get('/patients/:patient/profile', route(r => service.agendaProfile(r.user, r.params.patient)));
+  router.post('/patients/:patient/profile', route(r => service.saveAgendaProfile(r.user, r.params.patient, r.body)));
+  router.get('/patients/:patient/appointments', route(r => service.agenda(r.user, r.params.patient, r.query)));
+  router.post('/patients/:patient/appointments', route(r => service.createAppointment(r.user, r.params.patient, r.body), 201));
+  router.post('/patients/:patient/appointments/:appointment/cancel', route(r => service.cancelAppointment(r.user, r.params.patient, r.params.appointment, r.body)));
   router.get('/patients/:patient/boards', route(r => service.boards(r.user, r.params.patient)));
   router.post('/patients/:patient/boards', route(r => service.saveBoard(r.user, r.params.patient, r.body), 201));
   router.post('/patients/:patient/boards/:board', route(r => service.saveBoard(r.user, r.params.patient, r.body, r.params.board)));
@@ -220,6 +232,7 @@ function createFamilyDemoRouter({ authenticate, service }) {
   router.get('/patients/:patient/family-links', route(r => service.links(r.user, r.params.patient)));
   router.delete('/patients/:patient/family-links/:family', route(r => service.revoke(r.user, r.params.patient, r.params.family), 204));
   router.get('/patients/:patient/activities', route(r => service.list(r.user, r.params.patient, r.query)));
+  router.delete('/patients/:patient/activities/:activity', route(r => service.removeActivity(r.user, r.params.patient, r.params.activity), 204));
   router.post('/patients/:patient/activities', route(r => service.assign(r.user, r.params.patient, r.body), 201));
   router.post('/patients/:patient/activities/:activity/complete', route(r => { fields(r.body, []); return service.complete(r.user, r.params.patient, r.params.activity); }));
   router.get('/patients/:patient/progress', route(r => service.summary(r.user, r.params.patient)));

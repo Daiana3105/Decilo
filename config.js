@@ -14,16 +14,25 @@ function loadConfig(env = process.env) {
     .map((origin) => origin.trim().replace(/\/$/, ""))
     .filter(Boolean);
   const frontendPublicUrl = String(env.FRONTEND_PUBLIC_URL || "").trim().replace(/\/$/, "");
+  const hosted = env.NODE_ENV === 'production' || Boolean(databaseUrl);
+  const publicDemo = env.FAMILY_DEMO_PUBLIC_ENABLED === 'true';
+  if (publicDemo && (!databaseUrl || env.FAMILY_DEMO_ENABLED !== 'true' || !/^[a-f0-9]{32}$/.test(env.FAMILY_DEMO_MARKER || ''))) {
+    throw new Error('La demo pública requiere DATABASE_URL, FAMILY_DEMO_ENABLED y FAMILY_DEMO_MARKER válidos');
+  }
+  const geminiUsers = String(env.GEMINI_DEMO_USER_IDS || '').split(',').map(value => value.trim()).filter(Boolean);
+  if (geminiUsers.some(value => !/^[1-9][0-9]{0,9}$/.test(value) || Number(value) > 2147483647)) throw new Error('GEMINI_DEMO_USER_IDS inválido');
 
   return {
     port: Number(env.PORT || 3000),
     jwtSecret,
     jwtExpiresIn: env.JWT_EXPIRES_IN || "1h",
-    familyDemo: { enabled: env.FAMILY_DEMO_ENABLED === 'true' && env.NODE_ENV !== 'production' &&
-      env.DB_NAME === 'decilo_family_demo' && !databaseUrl && ['127.0.0.1', 'localhost', 'postgres'].includes(env.DB_HOST),
+    familyDemo: { enabled: publicDemo || (env.FAMILY_DEMO_ENABLED === 'true' && !hosted &&
+      env.DB_NAME === 'decilo_family_demo' && ['127.0.0.1', 'localhost', 'postgres'].includes(env.DB_HOST)),
+      publicDemo,
       marker: String(env.FAMILY_DEMO_MARKER || '') },
     assistant: {
-      enabled: Boolean(String(env.GEMINI_API_KEY || '').trim()) || env.GEMINI_DEMO_ENABLED === 'true',
+      enabled: hosted ? env.GEMINI_DEMO_ENABLED === 'true' : Boolean(String(env.GEMINI_API_KEY || '').trim()) || env.GEMINI_DEMO_ENABLED === 'true',
+      allowedUserIds: hosted ? geminiUsers : null,
       apiKey: String(env.GEMINI_API_KEY || '').trim(),
       model: String(env.GEMINI_MODEL || 'gemini-3.5-flash-lite').trim()
     },

@@ -1,0 +1,23 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const request=require('supertest');
+const bcrypt=require('bcryptjs');
+const {performance}=require('node:perf_hooks');
+const {isolatedDatabase}=require('../scripts/test-database');
+const {createServer}=require('../server');
+test('startup and cost-12 login timings exclude blocked secondary notifications',async t=>{
+  const fixture=await isolatedDatabase();t.after(()=>fixture.close());
+  const password='synthetic-release-test-password';
+  const hash=await bcrypt.hash(password,12);
+  await fixture.database.query("INSERT INTO users(nombre,email,password_hash,rol) VALUES('Synthetic','startup@release.test',$1,'paciente')",[hash]);
+  let scheduled=false,resolveJob;
+  const pending=new Promise(resolve=>{resolveJob=resolve;});
+  const jobs={schedule(){scheduled=true;return pending;},close(){resolveJob();return pending;}};
+  const start=performance.now();
+  const server=await createServer({database:fixture.database,config:{jwtSecret:'synthetic-release-secret-at-least-32-characters',jwtExpiresIn:'1h'},loginNotifications:jobs});
+  t.after(()=>server.close());
+  const startupMs=Math.round(performance.now()-start),loginStart=performance.now();
+  await request(server.app).post('/api/auth/login').send({email:'startup@release.test',password}).timeout(5000).expect(200);
+  assert.equal(scheduled,true);
+  console.log(JSON.stringify({phase:'isolated-local',startupMs,validLoginCost12Ms:Math.round(performance.now()-loginStart),secondaryStillPending:true}));
+});

@@ -77,3 +77,11 @@ Pendientes y avances parciales:
 
 No se autoriza consumir una API paga, activar proveedor, hacer commit, push,
 merge, archivo OpenSpec ni despliegue.
+## Preparación Render — 2026-10-07 (sin publicación)
+
+Se prepararon opt-in público, lista privada de cuentas ficticias, confirmación de
+edad en backend y corrección del payload GenerateContent. La validación final se
+registra en `RENDER_RELEASE_CHECKLIST.md`. No se completan las tareas productivas
+de cuotas durables, presupuesto, políticas ni revisión manual por esta preparación.
+Pendientes: revisar variables reales de Render, lista de cuentas autorizadas,
+cuotas del proyecto Google y prueba pública con consentimiento tras autorización.

@@ -95,6 +95,7 @@
   let activeCategory = "todas";
   let authMode = "login";
   let authMessage = "";
+  let loginRequest = null;
   let assistantRequest = null;
   let assistantCapabilitiesRequest = null;
   let familyContext = { token: null, mode: 'loading', selected: '', controller: null };
@@ -131,6 +132,7 @@
   function showToast(message) { const old = document.querySelector(".toast"); if (old) old.remove(); const toast = document.createElement("div"); toast.className = "toast"; toast.setAttribute("role", "status"); toast.textContent = message; document.body.appendChild(toast); setTimeout(() => toast.remove(), 3200); }
 
   function render() {
+    if (loginRequest) { loginRequest.abort(); loginRequest = null; }
     const boardSessionChanged = boardContext.token !== (session?.token || null);
     if (boardContext.token !== (session?.token || null) || boardContext.view !== view) {
       boardContext.controller?.abort(); boardContext.editorController?.abort(); boardContext.dialog?.remove();
@@ -160,7 +162,7 @@
     if (familyContext.mode === 'loading') return '<section class="panel"><p role="status">Comprobando acompañamiento…</p></section>';
     if (familyContext.mode === 'error') return '<section class="panel"><p role="alert">No pudimos comprobar el acceso. No se mostrarán datos locales.</p><button id="family-retry" class="secondary-button">Reintentar</button></section>';
     const professional = session.user.role === 'profesional', family = session.user.role === 'familiar';
-    const title = { inicio: 'Resumen', pacientes: 'Pacientes vinculados', actividades: family ? 'Actividades de Hogar' : 'Actividades', progreso: 'Progreso' }[view];
+    const title = { agenda: 'Agenda', inicio: 'Resumen', pacientes: 'Pacientes vinculados', actividades: family ? 'Actividades de Hogar' : 'Actividades', progreso: 'Progreso' }[view];
     return `<section class="panel family-demo" data-family-view="${view}" aria-labelledby="family-title"><h1 id="family-title" tabindex="-1">${title}</h1>
       <p class="hint">Demo ficticia · Datos autorizados en PostgreSQL. ${family ? 'Solo Hogar y su progreso.' : 'Sin importación de datos locales.'}</p>
       <p id="family-status" role="status" aria-live="polite">Cargando vínculos…</p>
@@ -168,6 +170,48 @@
       ${family ? '<form id="family-accept"><label for="family-code">Código de invitación<input id="family-code" required maxlength="32" autocomplete="off" spellcheck="false" /></label><button class="primary-button">Aceptar invitación</button></form>' : ''}
       <div id="family-content"></div>
     </section>`;
+  }
+  async function mountAgenda({ state, patient, base, request, mutate, current, content, professional }) {
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const month = state.agendaMonth || today.slice(0,7);
+    const result = await request(base + '/appointments?month=' + encodeURIComponent(month));
+    if (!current() || state.selected !== patient.id) return;
+    const [year, number] = month.split('-').map(Number);
+    const days = new Date(Date.UTC(year,number,0)).getUTCDate(), offset = (new Date(Date.UTC(year,number-1,1)).getUTCDay()+6)%7;
+    const dateOf = value => new Intl.DateTimeFormat('en-CA',{ timeZone: result.timezone, year:'numeric',month:'2-digit',day:'2-digit' }).format(new Date(value));
+    const timeOf = value => new Intl.DateTimeFormat('es-AR',{ timeZone: result.timezone, hour:'2-digit',minute:'2-digit',hourCycle:'h23' }).format(new Date(value));
+    content.innerHTML = `<h2>Turnos de ${escapeHtml(patient.name)}</h2><p>Demo ficticia · Hora de Buenos Aires (UTC−3). ${professional ? 'Solo tus turnos con este paciente.' : 'Consulta de turnos autorizados.'}</p>
+      <label>Mes<input id="agenda-month" type="month" min="2000-01" max="2099-12" required value="${month}" /></label>
+      <div class="agenda-calendar" role="group" aria-label="Calendario mensual">${['L','M','X','J','V','S','D'].map(d=>`<span aria-hidden="true">${d}</span>`).join('')}${'<span aria-hidden="true"></span>'.repeat(offset)}${Array.from({length:days},(_,i)=>{
+        const day = `${month}-${String(i+1).padStart(2,'0')}`, count = result.appointments.filter(a=>dateOf(a.startsAt)===day && a.status!=='cancelado').length;
+        return `<div aria-label="${day}: ${count} turnos"><strong>${i+1}</strong>${count ? `<small>${count} turno${count===1?'':'s'}</small>` : ''}</div>`;
+      }).join('')}</div><div class="list" id="agenda-list">${result.appointments.map(a=>`<article class="card"><p>${dateOf(a.startsAt)} · ${timeOf(a.startsAt)}–${timeOf(a.endsAt)} · ${escapeHtml(a.status)}</p>${professional && a.status!=='cancelado' ? `<button class="secondary-button" data-cancel-appointment="${escapeHtml(a.id)}">Cancelar turno</button>` : ''}</article>`).join('') || '<p>No hay turnos este mes.</p>'}</div>
+      ${professional ? `<form id="agenda-create"><h3>Crear turno</h3><label>Fecha<input type="date" name="date" min="${today}" required /></label><label>Hora (Buenos Aires)<input type="time" name="time" step="300" required /></label><label>Duración en minutos<input type="number" name="duration" min="15" max="180" step="5" value="30" required /></label><button class="primary-button">Crear turno</button></form>` : ''}<p id="agenda-message" role="status" aria-live="polite"></p>`;
+    document.getElementById('agenda-month').onchange = event => { if (!event.target.checkValidity() || !event.target.value) return; state.agendaMonth = event.target.value; render(); };
+    if (state.agendaConfirmation) {
+      const confirmation = state.agendaConfirmation;
+      delete state.agendaConfirmation;
+      if (confirmation.patient === patient.id) {
+        const message = document.getElementById('agenda-message');
+        message.className = 'demo-save-confirmation';
+        message.textContent = 'Turno creado.';
+        document.querySelector('#agenda-create button')?.focus({ preventScroll: true });
+      }
+    }
+    const errorMessage = error => {
+      if (!current()) return;
+      if (error.status === 401) return logoutSession('Tu sesión venció.');
+      if (error.status === 404 || error.status === 403) { content.replaceChildren(); state.selected = ''; render(); return; }
+      document.getElementById('agenda-message').textContent = error.status === 409 ? 'El paciente o profesional ya tiene un turno en ese horario.' : 'No se pudo guardar. Revisá fecha futura, hora y duración; actualizá para comprobar el estado antes de reintentar.';
+    };
+    document.getElementById('agenda-create')?.addEventListener('submit', async event => {
+      event.preventDefault(); const values = Object.fromEntries(new FormData(event.currentTarget)); values.duration = Number(values.duration);
+      try { if (await mutate(base + '/appointments', values) && current()) { state.agendaMonth = values.date.slice(0,7); state.agendaConfirmation = { patient: patient.id }; render(); } } catch (error) { errorMessage(error); }
+    });
+    content.querySelectorAll('[data-cancel-appointment]').forEach(button => { button.onclick = async () => {
+      if (!window.confirm('¿Cancelar este turno? Se conservará el historial.')) return;
+      try { if (await mutate(base + '/appointments/' + button.dataset.cancelAppointment + '/cancel', {}) && current()) render(); } catch (error) { errorMessage(error); }
+    }; });
   }
   function storageHint() {
     if (familyContext.mode === 'enabled') return 'Los tableros, las actividades y su progreso se guardan en PostgreSQL. Las notificaciones pertenecen a tu cuenta.';
@@ -187,7 +231,7 @@
         state.mode = result.enabled === false ? 'disabled' : result.allowed ? 'enabled' : 'denied';
         const hint = document.getElementById('storage-hint'); if (hint) hint.textContent = storageHint();
         // Capability completion must not reset an assistant form or steal header/nav focus.
-        if (['inicio', 'pacientes', 'actividades', 'progreso', 'tableros', 'comunicador'].includes(view)) {
+        if (['inicio', 'pacientes', 'actividades', 'progreso', 'agenda', 'tableros', 'comunicador'].includes(view)) {
           const focusedId = document.activeElement?.id, focusedView = document.activeElement?.dataset?.view;
           render();
           if (focusedId) document.getElementById(focusedId)?.focus();
@@ -242,33 +286,50 @@
       status.textContent = !patients.length ? 'No tenés pacientes vinculados. Aceptá una invitación para comenzar.' : !patient ? 'Elegí el paciente que querés acompañar.' : `Paciente activo: ${patient.name}`;
       if (!patient) return;
       const base = '/patients/' + encodeURIComponent(patient.id);
+      if (view === 'agenda') { await mountAgenda({ state, patient, base, request, mutate, current, content, professional }); return; }
       const overview = view === 'inicio', activities = view === 'actividades', progressView = view === 'progreso';
       const manage = view === 'pacientes' && professional;
-      const [list, progress, comments, links] = await Promise.all([
+      const [list, progress, comments, links, profileResult] = await Promise.all([
         activities ? request(base + '/activities') : null,
         overview || progressView ? request(base + '/progress') : null,
         progressView ? request(base + '/comments') : null,
-        manage ? request(base + '/family-links') : null
+        manage ? request(base + '/family-links') : null,
+        manage ? request(base + '/profile') : null
       ]);
       if (!current() || state.selected !== patient.id) return;
       content.innerHTML = `<h2>${escapeHtml(patient.name)}</h2>
         ${overview ? `<section class="stats-grid" aria-label="Resumen del paciente">${[
-          ['Asignadas', progress.assigned], ['Completadas', progress.completed],
-          ['Pendientes', progress.assigned - progress.completed], ['Puntos', progress.points]
+          ['Asignadas activas', progress.activeAssigned], ['Completadas activas', progress.activeCompleted],
+          ['Pendientes', progress.activeAssigned - progress.activeCompleted], ['Puntos históricos', progress.points]
         ].map(([label, value]) => `<article class="card"><span>${label}</span><strong class="stat-value">${value}</strong></article>`).join('')}</section>
-        ${progress.assigned ? '' : '<p>Sin actividades asignadas.</p>'}
+        ${progress.activeAssigned ? '' : '<p>Sin actividades activas.</p>'}
         <nav aria-label="Accesos rápidos"><button class="primary-button" data-family-target="actividades">Ver actividades</button>
         <button class="secondary-button" data-family-target="progreso">Ver progreso</button>
         ${professional ? '<button class="secondary-button" data-family-target="pacientes">Gestionar vínculos</button>' : ''}</nav>` : ''}
         ${progressView ? `<section aria-label="Progreso del paciente"><p>${progress.assigned ? `${progress.completed} de ${progress.assigned} actividades completadas · ${progress.points} puntos · ${progress.completionPercent}%` : 'Sin actividades: todavía no hay avance para calcular.'}</p>
         ${progress.completionPercent === null ? '' : `<div class="progress-bar" role="progressbar" aria-label="Actividades completadas" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress.completionPercent}"><span style="width:${progress.completionPercent}%"></span></div>`}
         ${progress.badges.map(b => `<p>${escapeHtml(b.label)}</p>`).join('')}</section>
+        <p class="hint">El progreso conserva también las actividades retiradas y sus puntos.</p>
         <h3>Comentarios compartidos</h3><div id="family-comments" class="list"></div><button id="family-more-comments" class="secondary-button" ${comments.nextCursor ? '' : 'hidden'}>Más comentarios</button>
         ${family ? '<form id="family-comment"><label for="family-comment-text">Comentario de Hogar<textarea id="family-comment-text" required minlength="3" maxlength="1000"></textarea></label><button class="primary-button">Guardar comentario</button></form><button id="family-leave" class="danger-button">Dejar de acompañar a este paciente</button>' : ''}` : ''}
         ${activities ? `<div id="family-activities" class="list"></div><button id="family-more" class="secondary-button" ${list.nextCursor ? '' : 'hidden'}>Más actividades</button>
         ${professional ? '<form id="family-assign"><h3>Asignar actividad</h3><label>Título<input name="title" maxlength="120" required /></label><label>Instrucción<textarea name="instruction" maxlength="1000" required></textarea></label><label>Disponibilidad<select name="availability"><option>Hogar</option><option>Consulta</option></select></label><label>Puntos<input name="points" type="number" min="0" max="100" value="15" required /></label><button class="primary-button">Asignar actividad</button></form>' : ''}` : ''}
         ${manage ? `<form id="family-invite"><label for="family-email">Correo del familiar ficticio<input id="family-email" type="email" required maxlength="254" placeholder="family@family-demo.test" /></label><button class="primary-button">Crear código de invitación</button></form><p id="family-invitation" role="status"></p>
         <div id="family-links">${links.families.map(f => `<p>${escapeHtml(f.name)} <button class="danger-button" data-family-revoke="${escapeHtml(f.id)}">Revocar vínculo</button></p>`).join('')}</div>` : ''}`;
+      if (manage) {
+        const form = document.createElement('form'); form.id = 'demo-profile';
+        form.innerHTML = `<h3>${profileResult.profile ? 'Editar' : 'Agregar'} ficha ficticia</h3><p>Solo pacientes ficticios ya vinculados. No crea cuentas ni consentimiento para uso real. Usá únicamente datos ficticios.</p><label>Nombre<input name="firstName" maxlength="80" required value="${escapeHtml(profileResult.profile?.firstName || '')}" /></label><label>Apellido<input name="lastName" maxlength="80" required value="${escapeHtml(profileResult.profile?.lastName || '')}" /></label><label>Contacto opcional (ficticio)<input name="contact" maxlength="160" value="${escapeHtml(profileResult.profile?.contact || '')}" /></label><button class="primary-button">Guardar ficha</button><p id="profile-status" role="status"></p>`;
+        content.prepend(form);
+        form.addEventListener('submit', async event => {
+          event.preventDefault();
+          try { if (await mutate(base + '/profile', Object.fromEntries(new FormData(form))) && current()) {
+            const message = document.getElementById('profile-status');
+            message.className = 'demo-save-confirmation';
+            message.textContent = 'Ficha guardada.';
+          } }
+          catch (error) { fail(error); }
+        });
+      }
       content.querySelectorAll('[data-family-target]').forEach(button => button.addEventListener('click', () => {
         if (!navItems().some(item => item.id === button.dataset.familyTarget)) return;
         view = button.dataset.familyTarget; render(); document.getElementById('family-title')?.focus();
@@ -278,6 +339,14 @@
         for (const a of rows) {
           const item = document.createElement('article'); item.className = 'card';
           item.innerHTML = `<h3>${escapeHtml(a.title)}</h3><p>${escapeHtml(a.instruction)}</p><p>${a.completedAt ? 'Completada' : 'Pendiente'} · ${a.points} puntos</p>`;
+          if (professional) {
+            const remove = document.createElement('button'); remove.className = 'danger-button'; remove.textContent = 'Quitar actividad';
+            remove.onclick = async () => {
+              if (!window.confirm('¿Quitar esta actividad? Se ocultará de las actividades activas, conservando su historial y progreso.')) return;
+              try { await mutate(base + '/activities/' + a.id, undefined, 'DELETE'); if (current()) render(); } catch (error) { fail(error); }
+            };
+            item.append(remove);
+          }
           if (!professional && !a.completedAt) {
             const button = document.createElement('button'); button.className = 'primary-button'; button.textContent = 'Completar actividad';
             button.onclick = async () => { try { if (await mutate(base + '/activities/' + a.id + '/complete', {}) && current()) render(); } catch (error) { fail(error); } };
@@ -515,7 +584,7 @@
       const available = result.geminiAvailable === true && result.consentVersion === 'google-demo-v1';
       mode.querySelector('[value="gemini"]').disabled = !available;
       consentVersion = available ? result.consentVersion : null;
-      document.getElementById('assistant-availability').textContent = available ? 'Gemini disponible para esta cuenta ficticia. Elegí el modo y aceptá el aviso antes de enviar.' : 'Gemini no está habilitado para esta cuenta. Usá el modo simulado; la demo externa requiere una cuenta con correo .test o .invalid.';
+      document.getElementById('assistant-availability').textContent = available ? 'Gemini disponible para esta cuenta ficticia. Elegí el modo y aceptá el aviso antes de enviar.' : 'Gemini no está habilitado para esta cuenta. Usá el modo simulado; la demo externa requiere una cuenta ficticia autorizada.';
     }).catch(() => {
       if (form.isConnected && session?.token === capabilityToken) document.getElementById('assistant-availability').textContent = 'No pudimos comprobar Gemini. El modo simulado sigue disponible.';
     }).finally(() => { clearTimeout(capabilityTimer); if (assistantCapabilitiesRequest === capabilityController) assistantCapabilitiesRequest = null; });
@@ -560,7 +629,7 @@
       const token = session?.token;
       const current = () => assistantRequest === controller && form.isConnected && session?.token === token;
       send.setAttribute('aria-disabled', 'true'); form.setAttribute('aria-busy', 'true'); reply.textContent = ''; status.textContent = external ? 'Consultando a Gemini…' : 'Preparando respuesta simulada…';
-      const payload = external ? { message, mode: 'gemini', consent: consentVersion } : { message };
+      const payload = external ? { message, mode: 'gemini', consent: consentVersion, demoAdultConfirmed: age.checked } : { message };
       consent.checked = false;
       const timer = setTimeout(() => controller.abort(), 16000);
       try {
@@ -580,9 +649,9 @@
   }
   function renderLogin() { return `<main class="login-shell"><section class="login-card" aria-labelledby="login-title"><div class="brand-mark"><b aria-hidden="true">D</b><span>DECILO</span></div><p class="eyebrow" style="margin-top:28px">Comunicación que acompaña</p><h1 id="login-title">Un espacio para decir, practicar y compartir.</h1><p class="lead">Un MVP accesible para conectar la comunicación aumentativa con la práctica fonoaudiológica y el acompañamiento familiar.</p><form class="login-form" id="login-form"><fieldset style="border:0;padding:0;margin:0"><legend class="eyebrow">Elegí tu espacio</legend><div class="role-grid">${Object.entries(roleLabels).map(([role, label]) => `<button type="button" class="role-button" data-role="${role}" aria-pressed="${selectedRole === role}"><span class="role-icon" aria-hidden="true">${role === "profesional" ? "✦" : role === "paciente" ? "◉" : "⌂"}</span><strong>${label}</strong><span>${role === "profesional" ? "Configurar y acompañar" : role === "paciente" ? "Comunicar y practicar" : "Acompañar desde casa"}</span></button>`).join("")}</div></fieldset><label for="login-email">Correo de demostración<input id="login-email" name="email" type="email" value="${selectedRole === "profesional" ? "sofia@decilo.test" : selectedRole === "paciente" ? "mateo@decilo.test" : "carla@decilo.test"}" required /></label><label for="login-password">Clave<input id="login-password" name="password" type="password" value="decilo" required /></label><p class="hint">Demo local: la clave de los tres perfiles es <strong>decilo</strong>.</p><p id="login-message" class="message" role="alert"></p><button class="primary-button" type="submit">Entrar a DECILO</button></form></section></main>`; }
   function renderApp() { const current = user(); return `<header class="topbar"><div class="brand-mark"><b aria-hidden="true">D</b><span>DECILO</span></div><div class="topbar-actions"><span id="notifications-slot"></span><div class="account-zone" role="group" aria-label="Cuenta de usuario"><div class="account-info"><span class="session-label" title="${escapeHtml(current.name)}">${escapeHtml(current.name)}</span></div><button class="icon-button logout-button" id="logout-button" title="Cerrar sesión" aria-label="Cerrar sesión"><span class="logout-icon" aria-hidden="true">↪</span><span class="logout-text">Cerrar sesión</span></button></div></div></header><div class="layout"><aside class="sidebar"><p class="eyebrow">Tu espacio</p><strong>${escapeHtml(current.name)}</strong><nav aria-label="Navegación principal">${navItems().map((item) => `<button class="nav-button" data-view="${item.id}" aria-current="${view === item.id ? "page" : "false"}">${item.label}</button>`).join("")}</nav><div class="section"><p id="storage-hint" class="hint">${storageHint()}</p></div></aside><main class="content">${renderView()}</main></div>`; }
-  function navItems() { if (session.role === "profesional") return [{ id: "inicio", label: "Resumen" }, { id: "pacientes", label: "Pacientes" }, { id: "tableros", label: "Tableros" }, { id: "actividades", label: "Actividades" }, { id: "progreso", label: "Progreso" }]; if (session.role === "paciente") return [{ id: "comunicador", label: "Mi comunicador" }, { id: "actividades", label: "Mis actividades" }, { id: "progreso", label: "Mis logros" }]; return [{ id: "inicio", label: familyContext.mode === "enabled" ? "Resumen" : "Seguimiento" }, { id: "actividades", label: "Actividades de hogar" }, { id: "progreso", label: familyContext.mode === "enabled" ? "Progreso" : "Comentarios" }]; }
+  function navItems() { const agenda = familyContext.mode === "enabled" ? [{ id: "agenda", label: "Agenda" }] : []; if (session.role === "profesional") return [...agenda, { id: "inicio", label: "Resumen" }, { id: "pacientes", label: "Pacientes" }, { id: "tableros", label: "Tableros" }, { id: "actividades", label: "Actividades" }, { id: "progreso", label: "Progreso" }]; if (session.role === "paciente") return [...agenda, { id: "comunicador", label: "Mi comunicador" }, { id: "actividades", label: "Mis actividades" }, { id: "progreso", label: "Mis logros" }]; return [...agenda, { id: "inicio", label: familyContext.mode === "enabled" ? "Resumen" : "Seguimiento" }, { id: "actividades", label: "Actividades de hogar" }, { id: "progreso", label: familyContext.mode === "enabled" ? "Progreso" : "Comentarios" }]; }
   function heading(eyebrow, title, description, action = "") { return `<div class="page-heading"><div><p class="eyebrow">${eyebrow}</p><h1>${title}</h1><p>${description}</p></div>${action}</div>`; }
-  function renderView() { if (familyContext.mode !== 'disabled' && ['tableros','comunicador'].includes(view)) return remoteBoardsView(); if (familyContext.mode !== 'disabled' && ['inicio','pacientes','actividades','progreso'].includes(view)) { if (familyContext.mode === 'denied') return '<section class="panel"><p>Esta cuenta no pertenece a la demo familiar.</p></section>'; return familyPanel(); } if (view === "comunicador") return renderCommunicator(); if (view === "pacientes") return renderPatients(); if (view === "tableros") return renderBoards(); if (view === "actividades") return renderActivities(); if (view === "progreso") return renderProgress(); return renderHome(); }
+  function renderView() { if (familyContext.mode !== 'disabled' && ['tableros','comunicador'].includes(view)) return remoteBoardsView(); if (familyContext.mode !== 'disabled' && ['inicio','pacientes','actividades','progreso','agenda'].includes(view)) { if (familyContext.mode === 'denied') return '<section class="panel"><p>Esta cuenta no pertenece a la demo familiar.</p></section>'; return familyPanel(); } if (view === "comunicador") return renderCommunicator(); if (view === "pacientes") return renderPatients(); if (view === "tableros") return renderBoards(); if (view === "actividades") return renderActivities(); if (view === "progreso") return renderProgress(); return renderHome(); }
   function patientSelect() { const patients = patientsForCurrentUser(); return patients.length > 1 ? `<label>Paciente<select id="patient-select">${patients.map((item) => `<option value="${item.id}" ${activePatientId === item.id ? "selected" : ""}>${escapeHtml(item.name)}</option>`).join("")}</select></label>` : ""; }
   function renderHome() { const patients = patientsForCurrentUser(); const activities = patients.flatMap((item) => activitiesFor(item.id)); const pending = activities.filter((item) => !deliveryFor(item.id)); return `${heading(session.role === "familiar" ? "Acompañamiento familiar" : "Sesión activa", session.role === "familiar" ? "Seguimiento que se puede compartir" : "Panel de acompañamiento", session.role === "familiar" ? "Consultá las actividades de hogar y mantené informado al equipo." : "Una vista clara para decidir qué necesita atención hoy.", session.role === "profesional" ? `<button class="primary-button" data-action="new-patient">Registrar paciente</button>` : "")}<section class="stats-grid"><article class="card"><span class="muted">Pacientes vinculados</span><strong class="stat-value">${patients.length}</strong><span class="status success">✓ Relación autorizada</span></article><article class="card"><span class="muted">Actividades pendientes</span><strong class="stat-value">${pending.length}</strong><span class="status pending">! Para revisar</span></article><article class="card"><span class="muted">Puntos acumulados</span><strong class="stat-value">${patients.reduce((sum, item) => sum + pointsFor(item.id), 0)}</strong><span class="status success">★ Recompensas idempotentes</span></article><article class="card"><span class="muted">Comentarios</span><strong class="stat-value">${data.comments.filter((item) => patients.some((patient) => patient.id === item.patientId)).length}</strong><span class="status pending">✎ Registro familiar</span></article></section><section class="section panel"><div class="section-heading"><div><h2>Personas y actividad reciente</h2><p class="muted">Solo aparecen relaciones que tu sesión puede consultar.</p></div></div>${patients.length ? `<div class="list">${patients.map((patient) => `<div class="list-item"><div><h3>${escapeHtml(patient.name)}</h3><p class="muted">${activitiesFor(patient.id).length} actividades · ${pointsFor(patient.id)} puntos · ${badgesFor(patient.id).length} insignias</p></div><button class="secondary-button" data-patient="${patient.id}" data-view="${session.role === "profesional" ? "progreso" : "actividades"}">Abrir seguimiento</button></div>`).join("")}</div>` : `<div class="empty">Todavía no hay pacientes vinculados a esta cuenta.</div>`}</section>`; }
   function renderPatients() { const patients = patientsForCurrentUser(); return `${heading("Gestión de relaciones", "Pacientes", "Registrá datos mínimos y mantené explícita cada vinculación.", `<button class="primary-button" data-action="new-patient">+ Nuevo paciente</button>`)}<section class="panel">${patients.length ? `<div class="list">${patients.map((patient) => `<div class="list-item"><div><h3>${escapeHtml(patient.name)}</h3><p class="muted">${escapeHtml(patient.email)} · ${activitiesFor(patient.id).length} actividades asignadas</p><span class="status success">✓ Vinculado a tu sesión</span></div><button class="secondary-button" data-patient="${patient.id}" data-view="progreso">Ver progreso</button></div>`).join("")}</div>` : `<div class="empty">No hay registros todavía.</div>`}</section>`; }
@@ -671,7 +740,34 @@
   function renderRegister() { return `<main class="login-shell"><section class="login-card" aria-labelledby="register-title"><div class="brand-mark"><b aria-hidden="true">D</b><span>DECILO</span></div><p class="eyebrow" style="margin-top:28px">Comenzá tu recorrido</p><h1 id="register-title">Creá tu cuenta DECILO.</h1><p class="lead">Elegí el espacio que mejor representa tu forma de acompañar la comunicación.</p><form class="login-form" id="register-form"><label for="register-name">Nombre<input id="register-name" name="nombre" autocomplete="name" required minlength="2" /></label><label for="register-email">Correo electrónico<input id="register-email" name="email" type="email" autocomplete="email" required /></label><label for="register-password">Contraseña<input id="register-password" name="password" type="password" autocomplete="new-password" minlength="8" required /><span class="hint">Usá al menos 8 caracteres.</span></label><label for="register-confirm">Confirmá tu contraseña<input id="register-confirm" name="confirmPassword" type="password" autocomplete="new-password" minlength="8" required /></label><fieldset style="border:0;padding:0;margin:0"><legend class="eyebrow">Tu rol</legend><div class="role-grid">${authRoleButtons()}</div></fieldset><p id="register-message" class="message" role="alert">${escapeHtml(authMessage)}</p><button class="primary-button" type="submit">Crear cuenta</button><button class="secondary-button" id="show-login" type="button">Ya tengo una cuenta</button></form></section></main>`; }
   function bindEvents() { document.querySelectorAll("[data-role]").forEach((button) => button.addEventListener("click", () => { selectedRole = button.dataset.role; render(); })); document.getElementById("login-form")?.addEventListener("submit", login); document.getElementById("register-form")?.addEventListener("submit", register); document.getElementById("show-register")?.addEventListener("click", () => { authMode = "register"; authMessage = ""; render(); }); document.getElementById("show-login")?.addEventListener("click", () => { authMode = "login"; authMessage = ""; render(); }); document.getElementById("logout-button")?.addEventListener("click", () => logoutSession()); document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => { if (!navItems().some((item) => item.id === button.dataset.view)) return; if (button.dataset.patient) activePatientId = button.dataset.patient; view = button.dataset.view; render(); })); document.querySelectorAll("[data-category]").forEach((button) => button.addEventListener("click", () => { activeCategory = button.dataset.category; render(); })); document.querySelectorAll("[data-picto]").forEach((button) => button.addEventListener("click", () => { const item = pictograms.find((picto) => picto.id === button.dataset.picto); if (item) { phrase.push(item); announce(`${item.word} agregado a la frase`); render(); } })); document.querySelectorAll("[data-phrase-index]").forEach((button) => button.addEventListener("click", () => { phrase.splice(Number(button.dataset.phraseIndex), 1); render(); })); document.querySelectorAll("[data-complete]").forEach((button) => button.addEventListener("click", () => completeActivity(button.dataset.complete))); document.querySelectorAll("[data-action]").forEach((button) => button.addEventListener("click", () => handleAction(button.dataset.action, button.dataset.board))); document.getElementById("patient-select")?.addEventListener("change", (event) => { activePatientId = event.target.value; render(); }); document.getElementById("comment-form")?.addEventListener("submit", saveComment); }
   function setSession(auth) { const publicUser = normalizeUser(auth.user); session = { token: auth.token, userId: publicUser.id, role: publicUser.role, user: publicUser, startedAt: new Date().toISOString() }; sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); view = publicUser.role === "paciente" ? "comunicador" : "inicio"; activePatientId = publicUser.role === "paciente" ? publicUser.id : "pac-1"; authMessage = ""; notifications.start(session); render(); }
-  async function login(event) { event.preventDefault(); authMessage = ""; const form = new FormData(event.currentTarget); try { const result = await apiRequest("/api/auth/login", { method: "POST", body: JSON.stringify({ email: form.get("email"), password: form.get("password") }) }); if (result.user.rol !== selectedRole) { authMessage = `Esta cuenta pertenece al espacio ${roleLabels[result.user.rol].toLowerCase()}.`; render(); return; } setSession(result); } catch (error) { authMessage = authErrorMessage(error); render(); } }
+  async function login(event) {
+    event.preventDefault();
+    if (loginRequest) return;
+    const element = event.currentTarget, form = new FormData(element), role = selectedRole;
+    const controller = new AbortController(); loginRequest = controller;
+    const current = () => loginRequest === controller && element.isConnected;
+    const message = document.getElementById('login-message');
+    element.setAttribute('aria-busy', 'true');
+    element.querySelectorAll('button').forEach(button => button.setAttribute('aria-disabled', 'true'));
+    message.setAttribute('role', 'status'); message.textContent = 'Ingresando…';
+    const slow = setTimeout(() => { if (current()) message.textContent = 'El servicio está tardando en responder. Si estaba inactivo, puede estar iniciando. No hace falta volver a enviar.'; }, 4000);
+    const timeout = setTimeout(() => controller.abort(), 90000);
+    try {
+      const result = await apiRequest('/api/auth/login', { method: 'POST', signal: controller.signal,
+        body: JSON.stringify({ email: form.get('email'), password: form.get('password') }) });
+      if (!current()) return;
+      if (result.user.rol !== role) { authMessage = `Esta cuenta pertenece al espacio ${roleLabels[result.user.rol].toLowerCase()}.`; render(); return; }
+      authMessage = ''; setSession(result);
+    } catch (error) {
+      if (!current()) return;
+      authMessage = error.name === 'AbortError' ? 'El servicio no respondió a tiempo. Reintentá cuando esté disponible.' : authErrorMessage(error);
+      message.setAttribute('role', 'alert'); message.textContent = authMessage;
+    } finally {
+      clearTimeout(slow); clearTimeout(timeout);
+      if (loginRequest === controller) loginRequest = null;
+      if (element.isConnected) { element.removeAttribute('aria-busy'); element.querySelectorAll('button').forEach(button => button.removeAttribute('aria-disabled')); }
+    }
+  }
   async function register(event) { event.preventDefault(); authMessage = ""; const form = new FormData(event.currentTarget); try { const result = await apiRequest("/api/auth/register", { method: "POST", body: JSON.stringify({ nombre: form.get("nombre"), email: form.get("email"), password: form.get("password"), confirmPassword: form.get("confirmPassword"), rol: selectedRole }) }); setSession(result); } catch (error) { authMessage = authErrorMessage(error); render(); } }
   function openPatientModal() { if (session.role !== "profesional") return; const dialog = modal("Registrar paciente", `<form id="patient-form" class="form-grid"><label>Nombre completo<input name="name" required minlength="2" /></label><label>Correo del paciente<input name="email" type="email" required /></label><label class="full">Correo del familiar vinculado<input name="familyEmail" type="email" placeholder="familiar@decilo.test" /></label><p id="modal-message" class="message full" role="alert"></p><button class="primary-button full" type="submit">Crear y vincular paciente</button></form>`); dialog.querySelector("#patient-form").addEventListener("submit", (event) => { event.preventDefault(); const form = new FormData(event.currentTarget); const name = String(form.get("name")).trim(); const email = String(form.get("email")).trim().toLowerCase(); const familyEmail = String(form.get("familyEmail")).trim().toLowerCase(); if (data.users.some((item) => item.email === email)) { dialog.querySelector("#modal-message").textContent = "Ese correo ya está registrado."; return; } const patient = { id: `pac-${Date.now()}`, name, email, role: "paciente" }; const family = data.users.find((item) => item.email === familyEmail && item.role === "familiar"); data.users.push(patient); data.relationships.push({ professionalId: session.userId, patientId: patient.id, familyIds: family ? [family.id] : [] }); persist(); dialog.remove(); showToast("Paciente registrado y relación guardada"); render(); }); }
   function renderCommunicator() {

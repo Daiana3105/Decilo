@@ -48,6 +48,13 @@ async function initializePatientScheduling(client) {
       CHECK ((scope='professional_access' AND professional_user_id=issuer_user_id AND patient_user_id IS NULL) OR
              (scope='family_schedule' AND patient_user_id=issuer_user_id AND professional_user_id IS NULL))
     );
+    -- Existing installations require replacing the original check, not just CREATE IF NOT EXISTS.
+    -- Pending professional invitations remain unassigned; consumption records the patient.
+    ALTER TABLE patient_consent_invitations DROP CONSTRAINT IF EXISTS patient_consent_invitations_check;
+    ALTER TABLE patient_consent_invitations ADD CONSTRAINT patient_consent_invitations_check
+      CHECK ((scope='professional_access' AND professional_user_id=issuer_user_id
+               AND (patient_user_id IS NULL OR consumed_at IS NOT NULL)) OR
+             (scope='family_schedule' AND patient_user_id=issuer_user_id AND professional_user_id IS NULL));
     CREATE INDEX IF NOT EXISTS patient_consent_invitations_expiry
       ON patient_consent_invitations(expires_at) WHERE consumed_at IS NULL AND revoked_at IS NULL;
 

@@ -110,7 +110,7 @@ test('Gemini demo needs fresh explicit consent and simulated mode stays separate
   await page.locator('#assistant-consent').check();
   await page.locator('#assistant-send').click();
   await expect(page.locator('#assistant-reply')).toContainText('Mis actividades');
-  expect(sent).toEqual([{ message: 'Dónde busco la actividad', mode: 'gemini', consent: 'google-demo-v1' }]);
+  expect(sent).toEqual([{ message: 'Dónde busco la actividad', mode: 'gemini', consent: 'google-demo-v1', demoAdultConfirmed: true }]);
   await expect(page.locator('#assistant-consent')).not.toBeChecked();
   await page.locator('#assistant-mode').selectOption('simulated');
   await expect(page.locator('#assistant-age')).not.toBeChecked();

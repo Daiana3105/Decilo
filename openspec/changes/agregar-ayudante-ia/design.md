@@ -46,7 +46,7 @@ ficticios; no es consentimiento de pacientes para producción.
 gemini-provider.js usa generateContent por HTTPS con x-goog-api-key, nunca clave
 en URL. Envía una pregunta y systemInstruction con guía pública del rol; no
 identidad, historial, archivos, herramientas, búsqueda, caché explícita ni datos
-de pacientes. Usa store=false sin prometer retención cero por Google. Se conserva
+de pacientes. Usa únicamente campos documentados de GenerateContent, sin prometer retención cero por Google. Se conserva
 8 KiB/800 caracteres, 256 tokens, timeout 15 s, cancelación y errores saneados.
 Límites de uso permanecen en memoria: esto NO completa cuotas durables ni
 presupuesto de producción. Consultas clínicas evidentes permanecen locales;
